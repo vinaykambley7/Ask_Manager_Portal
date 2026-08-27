@@ -21,7 +21,14 @@ function setStoredData(key, value) {
 }
 
 function getCurrentUser() {
-  return getStoredData(STORAGE_KEYS.CURRENT_USER, null);
+  const user = getStoredData(STORAGE_KEYS.CURRENT_USER, null);
+  if (user) {
+    if (user.center === 'Gadwa' || (user.name === 'Shekar' && user.center !== 'Gadwal')) {
+      user.center = 'Gadwal';
+      setCurrentUser(user);
+    }
+  }
+  return user;
 }
 
 function setCurrentUser(user) {
@@ -163,12 +170,32 @@ function escapeHtml(text) {
 }
 
 function seedInitialDataIfEmpty() {
-  const CLEAN_SCHEMA_VERSION = "v2_empty_clean";
+  // Migrate any legacy Gadwa references in localStorage to Gadwal
+  try {
+    const rawUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    if (rawUser && rawUser.includes('Gadwa')) {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, rawUser.replace(/Gadwa/g, 'Gadwal'));
+    }
+    const rawOps = localStorage.getItem(STORAGE_KEYS.OPERATORS);
+    if (rawOps && rawOps.includes('Gadwa')) {
+      localStorage.setItem(STORAGE_KEYS.OPERATORS, rawOps.replace(/Gadwa/g, 'Gadwal'));
+    }
+    const rawSubs = localStorage.getItem(STORAGE_KEYS.EOD_SUBMISSIONS);
+    if (rawSubs && rawSubs.includes('Gadwa')) {
+      localStorage.setItem(STORAGE_KEYS.EOD_SUBMISSIONS, rawSubs.replace(/Gadwa/g, 'Gadwal'));
+    }
+    const rawWork = localStorage.getItem(STORAGE_KEYS.ASSIGNED_WORK);
+    if (rawWork && rawWork.includes('Gadwa')) {
+      localStorage.setItem(STORAGE_KEYS.ASSIGNED_WORK, rawWork.replace(/Gadwa/g, 'Gadwal'));
+    }
+    const rawDone = localStorage.getItem(STORAGE_KEYS.WORK_DONE);
+    if (rawDone && rawDone.includes('Gadwa')) {
+      localStorage.setItem(STORAGE_KEYS.WORK_DONE, rawDone.replace(/Gadwa/g, 'Gadwal'));
+    }
+  } catch (e) {}
+
+  const CLEAN_SCHEMA_VERSION = "v3_clean_gadwal";
   if (localStorage.getItem('ask_schema_ver') !== CLEAN_SCHEMA_VERSION) {
-    localStorage.removeItem(STORAGE_KEYS.OPERATORS);
-    localStorage.removeItem(STORAGE_KEYS.ASSIGNED_WORK);
-    localStorage.removeItem(STORAGE_KEYS.WORK_DONE);
-    localStorage.removeItem(STORAGE_KEYS.EOD_SUBMISSIONS);
     localStorage.setItem('ask_schema_ver', CLEAN_SCHEMA_VERSION);
   }
 
