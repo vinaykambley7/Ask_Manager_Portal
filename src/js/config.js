@@ -14,5 +14,16 @@ const STORAGE_KEYS = {
   OPERATORS: "operators",
   EOD_SUBMISSIONS: "eodSubmissions",
   ASSIGNED_WORK: "assignedWork",
-  WORK_DONE: "workDone"
+  WORK_DONE: "workDone",
+  GRIEVANCES: "askGrievances"
 };
+
+const GRIEVANCE_SERVICE_TYPES = [
+  "New Enrollment below 5",
+  "above 5 - 17 enrollment",
+  "18 above enrollment",
+  "Mandatory Biometric Update",
+  "Demographic Update",
+  "Document Update",
+  "Biometric Update"
+];

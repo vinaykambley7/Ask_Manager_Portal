@@ -217,6 +217,78 @@ function escapeHtml(text) {
     .replace(/'/g, '&#039;');
 }
 
+function getGrievances() {
+  const grievances = getStoredData(STORAGE_KEYS.GRIEVANCES, []);
+  let modified = false;
+  grievances.forEach(g => {
+    if (g.center === 'Gadwa' || g.district === 'Gadwa') {
+      g.center = 'Gadwal';
+      g.district = 'Gadwal';
+      modified = true;
+    }
+    if (g.center === 'Anthosh Nagar' || g.district === 'Anthosh Nagar') {
+      g.center = 'Santosh Nagar';
+      g.district = 'Santosh Nagar';
+      modified = true;
+    }
+  });
+  if (modified) {
+    setStoredData(STORAGE_KEYS.GRIEVANCES, grievances);
+  }
+  return grievances;
+}
+
+function getCenterGrievances(centerName) {
+  const target = (centerName || '').trim().toLowerCase();
+  return getGrievances().filter(g => {
+    const c = (g.center || g.district || '').trim().toLowerCase();
+    return c === target ||
+           (target.startsWith('gadwa') && c.startsWith('gadwa')) ||
+           (target.includes('santosh') && c.includes('santosh'));
+  });
+}
+
+function saveGrievance(entry) {
+  const list = getGrievances();
+  list.unshift(entry);
+  setStoredData(STORAGE_KEYS.GRIEVANCES, list);
+  if (typeof syncGrievanceToSupabase === 'function') {
+    syncGrievanceToSupabase(entry);
+  }
+  return list;
+}
+
+function saveGrievances(entries) {
+  const list = getGrievances();
+  entries.forEach(e => list.unshift(e));
+  setStoredData(STORAGE_KEYS.GRIEVANCES, list);
+  if (typeof syncGrievancesToSupabase === 'function') {
+    syncGrievancesToSupabase(entries);
+  }
+  return list;
+}
+
+function updateGrievanceStatus(id, newStatus, adminRemarks = '') {
+  const list = getGrievances();
+  const item = list.find(g => g.id === id || g.grievanceId === id);
+  if (item) {
+    item.status = newStatus;
+    if (adminRemarks) item.adminRemarks = adminRemarks;
+    item.updatedAt = new Date().toISOString();
+    setStoredData(STORAGE_KEYS.GRIEVANCES, list);
+    if (typeof syncGrievanceToSupabase === 'function') {
+      syncGrievanceToSupabase(item);
+    }
+  }
+  return list;
+}
+
+function generateGrievanceId() {
+  const list = getGrievances();
+  const seq = (list.length + 1).toString().padStart(3, '0');
+  return `GRV-${getTodayString().replace(/-/g, '')}-${seq}`;
+}
+
 function seedInitialDataIfEmpty() {
   // Migrate any legacy Gadwa/Anthosh references in localStorage to Gadwal/Santosh Nagar
   try {
@@ -258,5 +330,27 @@ function seedInitialDataIfEmpty() {
   }
   if (!localStorage.getItem(STORAGE_KEYS.EOD_SUBMISSIONS)) {
     setStoredData(STORAGE_KEYS.EOD_SUBMISSIONS, []);
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.GRIEVANCES)) {
+    setStoredData(STORAGE_KEYS.GRIEVANCES, [
+      {
+        id: "GRV-20260827-001",
+        grievanceId: "GRV-20260827-001",
+        center: "Santosh Nagar",
+        district: "Santosh Nagar",
+        submittedBy: "Ramesh Kumar",
+        operatorId: "S_NX_TS_047",
+        enrolmentId: "2081400260067720260801182448",
+        enrolmentDate: "2026-08-25",
+        serviceType: "above 5 - 17 enrollment",
+        description: "Fingerprint scanner quality low for biometric verification on station 40026",
+        casesReported: 3,
+        recurringIssue: "Yes",
+        rootCause: "Optical scanner prism degradation",
+        rejectReason: "Poor biometric capture",
+        status: "Pending",
+        createdAt: "2026-08-27T10:30:00.000Z"
+      }
+    ]);
   }
 }

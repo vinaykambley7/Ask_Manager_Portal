@@ -17,3 +17,4 @@ Thumbs.db
 *.zip
 scratch/
 .system_generated/
+.firebase/

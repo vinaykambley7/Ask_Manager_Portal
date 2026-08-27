@@ -153,3 +153,45 @@ async function syncWorkDoneToSupabase(entry) {
     console.error("Failed to sync work log to Supabase:", err);
   }
 }
+
+/**
+ * Sync Grievance Entry to Supabase Cloud
+ */
+async function syncGrievanceToSupabase(entry) {
+  if (!supabaseClient || !isSupabaseConnected) return;
+
+  try {
+    const row = {
+      grievance_id: entry.id || entry.grievanceId,
+      district: entry.district || entry.center,
+      center: entry.center || entry.district,
+      submitted_by: entry.submittedBy,
+      operator_id: entry.operatorId,
+      enrolment_id: entry.enrolmentId,
+      enrolment_date: entry.enrolmentDate,
+      service_type: entry.serviceType,
+      description: entry.description,
+      cases_reported: entry.casesReported || 1,
+      recurring_issue: entry.recurringIssue || 'No',
+      root_cause: entry.rootCause || 'N/A',
+      reject_reason: entry.rejectReason || 'N/A',
+      status: entry.status || 'Pending',
+      admin_remarks: entry.adminRemarks || '',
+      created_at: entry.createdAt || new Date().toISOString()
+    };
+
+    const { data, error } = await supabaseClient.from('grievances').upsert([row], { onConflict: 'grievance_id' });
+    if (error) throw error;
+    console.log(`☁️ Synced grievance ${entry.id || entry.grievanceId} to Supabase.`);
+  } catch (err) {
+    console.error("Failed to sync grievance to Supabase:", err);
+  }
+}
+
+async function syncGrievancesToSupabase(entries) {
+  if (!entries || entries.length === 0) return;
+  for (const entry of entries) {
+    await syncGrievanceToSupabase(entry);
+  }
+}
+

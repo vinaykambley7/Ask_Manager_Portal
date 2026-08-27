@@ -64,6 +64,12 @@ function setupNavigation(user) {
         </a>
       </li>
       <li class="nav-item">
+        <a class="nav-link" onclick="showView('admin-grievances')">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
+          Grievance Ledger
+        </a>
+      </li>
+      <li class="nav-item">
         <a class="nav-link" onclick="showView('admin-export')">
           <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
           Export & Data
@@ -115,6 +121,19 @@ function setupNavigation(user) {
           Submission History
         </a>
       </li>
+      <li class="nav-section-title">Support & Grievance</li>
+      <li class="nav-item">
+        <a class="nav-link" onclick="showView('mgr-grievance-form')">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
+          Grievance Form
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" onclick="showView('mgr-grievance-history')">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+          My Grievances
+        </a>
+      </li>
     `;
     showView('mgr-home');
   }
@@ -152,6 +171,16 @@ function showView(viewId) {
   if (viewId === 'mgr-operators') renderManagerOperators();
   if (viewId === 'mgr-eod-form') initEODForm();
   if (viewId === 'mgr-history') renderManagerHistory();
+  if (viewId === 'mgr-grievance-form') {
+    if (typeof grievanceRowCount !== 'undefined' && grievanceRowCount === 0) {
+      addGrievanceRow();
+    }
+  }
+  if (viewId === 'mgr-grievance-history') {
+    if (typeof renderManagerGrievanceHistory === 'function') {
+      renderManagerGrievanceHistory();
+    }
+  }
 
   if (viewId === 'admin-home') {
     renderAdminHome();
@@ -167,6 +196,11 @@ function showView(viewId) {
   if (viewId === 'admin-center-reports') {
     renderAdminCenterReports();
     setTimeout(renderAdminAnalyticsCharts, 60);
+  }
+  if (viewId === 'admin-grievances') {
+    if (typeof renderAdminGrievances === 'function') {
+      renderAdminGrievances();
+    }
   }
 }
 
