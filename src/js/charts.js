@@ -481,7 +481,11 @@ function renderHODCharts(dateList, subs, allOps, selectedCenter) {
     const trainingCounts = [];
 
     centers.forEach(c => {
-      const cOps = allOps.filter(o => o.center === c);
+      const targetCenter = c.trim().toLowerCase();
+      const cOps = allOps.filter(o => {
+        const oCenter = (o.center || '').trim().toLowerCase();
+        return oCenter === targetCenter || (targetCenter.startsWith('gadwa') && oCenter.startsWith('gadwa'));
+      });
       certifiedCounts.push(cOps.filter(o => o.certification === 'Certified').length);
       trainingCounts.push(cOps.filter(o => o.certification !== 'Certified').length);
     });
@@ -527,7 +531,12 @@ function renderHODCharts(dateList, subs, allOps, selectedCenter) {
 
     const centers = selectedCenter === 'ALL' ? FIXED_MANAGERS.map(m => m.center) : [selectedCenter];
     const centerIncomes = centers.map(c => {
-      const cSubs = subs.filter(s => s.center === c);
+      const targetCenter = c.trim().toLowerCase();
+      const cSubs = subs.filter(s => {
+        const sCenter = (s.center || '').trim().toLowerCase();
+        return sCenter === targetCenter || (targetCenter.startsWith('gadwa') && sCenter.startsWith('gadwa'));
+      });
+
       return cSubs.reduce((acc, s) => {
         let amt = 0;
         if (s.summary && s.summary.totalAmount) {
@@ -561,7 +570,7 @@ function renderHODCharts(dateList, subs, allOps, selectedCenter) {
           legend: { position: 'top' },
           tooltip: {
             callbacks: {
-              label: (context) => ` Center Revenue: ₹${context.raw.toLocaleString()}`
+              label: (context) => ` Center Revenue: ₹${context.raw.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
             }
           }
         },
@@ -570,7 +579,7 @@ function renderHODCharts(dateList, subs, allOps, selectedCenter) {
           y: {
             beginAtZero: true,
             ticks: {
-              callback: (value) => '₹' + value
+              callback: (value) => '₹' + Number(value).toLocaleString()
             }
           }
         }

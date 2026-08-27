@@ -36,7 +36,18 @@ function setCurrentUser(user) {
 }
 
 function getOperators() {
-  return getStoredData(STORAGE_KEYS.OPERATORS, []);
+  const ops = getStoredData(STORAGE_KEYS.OPERATORS, []);
+  let modified = false;
+  ops.forEach(o => {
+    if (o.center === 'Gadwa' || (o.managerName === 'Shekar' && o.center !== 'Gadwal')) {
+      o.center = 'Gadwal';
+      modified = true;
+    }
+  });
+  if (modified) {
+    setStoredData(STORAGE_KEYS.OPERATORS, ops);
+  }
+  return ops;
 }
 
 function getManagerOperators(managerName) {
@@ -44,11 +55,26 @@ function getManagerOperators(managerName) {
 }
 
 function getCenterOperators(centerName) {
-  return getOperators().filter(op => op.center === centerName);
+  const target = (centerName || '').trim().toLowerCase();
+  return getOperators().filter(op => {
+    const c = (op.center || '').trim().toLowerCase();
+    return c === target || (target.startsWith('gadwa') && c.startsWith('gadwa'));
+  });
 }
 
 function getSubmissions() {
-  return getStoredData(STORAGE_KEYS.EOD_SUBMISSIONS, []);
+  const subs = getStoredData(STORAGE_KEYS.EOD_SUBMISSIONS, []);
+  let modified = false;
+  subs.forEach(s => {
+    if (s.center === 'Gadwa' || (s.managerName === 'Shekar' && s.center !== 'Gadwal')) {
+      s.center = 'Gadwal';
+      modified = true;
+    }
+  });
+  if (modified) {
+    setStoredData(STORAGE_KEYS.EOD_SUBMISSIONS, subs);
+  }
+  return subs;
 }
 
 function getManagerSubmissions(managerName) {
@@ -56,7 +82,11 @@ function getManagerSubmissions(managerName) {
 }
 
 function getCenterSubmissions(centerName) {
-  return getSubmissions().filter(s => s.center === centerName);
+  const target = (centerName || '').trim().toLowerCase();
+  return getSubmissions().filter(s => {
+    const c = (s.center || '').trim().toLowerCase();
+    return c === target || (target.startsWith('gadwa') && c.startsWith('gadwa'));
+  });
 }
 
 function getTodayString() {
