@@ -35,6 +35,9 @@ function handleManagerFormLogin(event) {
     };
     setCurrentUser(userSession);
     initApp();
+    if (typeof fetchAndHydrateFromSupabase === 'function') {
+      fetchAndHydrateFromSupabase(true);
+    }
   } else {
     alert("Invalid Manager username or center. Please check your credentials and try again.");
   }
@@ -54,6 +57,9 @@ function handleAdminLogin(event) {
     };
     setCurrentUser(userSession);
     initApp();
+    if (typeof fetchAndHydrateFromSupabase === 'function') {
+      fetchAndHydrateFromSupabase(true);
+    }
   } else {
     alert("Invalid administrator credentials. Please check your username and password.");
   }
