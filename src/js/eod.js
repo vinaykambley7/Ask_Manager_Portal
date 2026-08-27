@@ -69,7 +69,7 @@ function addTransactionRow(rowData = null) {
   transactionRowCount++;
   const rowId = transactionRowCount;
   const mainOpInput = document.getElementById('eodOperatorInput');
-  const defaultOpId = rowData ? (rowData.operatorId || '') : (mainOpInput ? mainOpInput.value.trim() : '');
+  const opId = rowData && rowData.operatorId ? rowData.operatorId : (mainOpInput ? mainOpInput.value.trim() : '');
 
   const enrolNo = rowData ? (rowData.enrolmentNo || '') : '';
   const type = rowData ? (rowData.type || 'U') : 'U';
@@ -78,12 +78,10 @@ function addTransactionRow(rowData = null) {
   const resident = rowData ? (rowData.resident || '') : '';
   const status = rowData ? (rowData.status || 'UPLOADED') : 'UPLOADED';
   
-  // Strict parsing from file without any default 50s
+  // Exact numbers without hardcoded defaults
   const gstNum = rowData && rowData.gstApplied !== undefined ? parseNumericValue(rowData.gstApplied, 0) : 0;
   const amtNum = rowData && rowData.amount !== undefined ? parseNumericValue(rowData.amount, 0) : 0;
-  
-  // Formula: Amount Charged + GST Applied = Total Amount Charged
-  const totalNum = amtNum + gstNum;
+  const totalNum = rowData && rowData.totalAmount !== undefined ? parseNumericValue(rowData.totalAmount, amtNum + gstNum) : (amtNum + gstNum);
 
   const gst = gstNum.toFixed(2);
   const amt = amtNum.toFixed(2);
@@ -94,41 +92,41 @@ function addTransactionRow(rowData = null) {
   tr.id = `txRow_${rowId}`;
   tr.innerHTML = `
     <td><b>${rowId}</b></td>
-    <td><input type="text" class="form-control" name="tx_enrolNo_${rowId}" value="${escapeHtml(enrolNo)}" placeholder="Enrolment / Packet No" required style="min-width:160px;" /></td>
+    <td><input type="text" class="form-control" name="tx_enrolNo_${rowId}" value="${escapeHtml(enrolNo)}" placeholder="Enrolment / Packet No" required style="min-width:180px;" /></td>
     <td>
-      <select class="form-control" name="tx_type_${rowId}" onchange="handleTxTypeChange(${rowId}, this.value)" style="min-width:120px;">
+      <select class="form-control" name="tx_type_${rowId}" onchange="handleTxTypeChange(${rowId}, this.value)" style="min-width:130px;">
         <option value="U" ${type === 'U' ? 'selected' : ''}>Update (U)</option>
         <option value="E" ${type === 'E' ? 'selected' : ''}>New Enrolment (E)</option>
-        <option value="D" ${type === 'D' ? 'selected' : ''}>Doc Update (D)</option>
         <option value="B" ${type === 'B' ? 'selected' : ''}>Biometric (B)</option>
+        <option value="D" ${type === 'D' ? 'selected' : ''}>Doc Update (D)</option>
       </select>
     </td>
     <td>
-      <select class="form-control" name="tx_mbu_${rowId}" onchange="handleMbuChange(${rowId}, this.value)">
+      <select class="form-control" name="tx_mbu_${rowId}" onchange="handleMbuChange(${rowId}, this.value)" style="min-width:80px;">
         <option value="No" ${mbu === 'No' ? 'selected' : ''}>No</option>
         <option value="Yes" ${mbu === 'Yes' ? 'selected' : ''}>Yes</option>
       </select>
     </td>
     <td>
-      <select class="form-control" name="tx_nri_${rowId}">
+      <select class="form-control" name="tx_nri_${rowId}" style="min-width:80px;">
         <option value="No" ${nri === 'No' ? 'selected' : ''}>No</option>
         <option value="Yes" ${nri === 'Yes' ? 'selected' : ''}>Yes</option>
       </select>
     </td>
     <td>
-      <input type="text" class="form-control" name="tx_opId_${rowId}" id="txOpId_${rowId}" value="${escapeHtml(defaultOpId)}" placeholder="Operator ID" style="min-width:130px;" required />
+      <input type="text" class="form-control" name="tx_opId_${rowId}" id="txOpId_${rowId}" value="${escapeHtml(opId)}" placeholder="Operator ID" style="min-width:130px;" required />
     </td>
-    <td><input type="text" class="form-control" name="tx_resident_${rowId}" value="${escapeHtml(resident)}" placeholder="Resident Name" style="min-width:140px;" required /></td>
+    <td><input type="text" class="form-control" name="tx_resident_${rowId}" value="${escapeHtml(resident)}" placeholder="Resident Name" style="min-width:160px;" required /></td>
     <td>
-      <select class="form-control" name="tx_status_${rowId}">
+      <select class="form-control" name="tx_status_${rowId}" style="min-width:110px;">
         <option value="UPLOADED" ${status === 'UPLOADED' ? 'selected' : ''}>UPLOADED</option>
         <option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>PENDING</option>
         <option value="REJECTED" ${status === 'REJECTED' ? 'selected' : ''}>REJECTED</option>
       </select>
     </td>
-    <td><input type="number" class="form-control" name="tx_gst_${rowId}" id="txGst_${rowId}" value="${gst}" step="0.01" oninput="calculateRowTotal(${rowId})" style="min-width:70px;" /></td>
-    <td><input type="number" class="form-control" name="tx_amt_${rowId}" id="txAmt_${rowId}" value="${amt}" step="0.01" oninput="calculateRowTotal(${rowId})" style="min-width:75px;" /></td>
-    <td><input type="number" class="form-control" name="tx_total_${rowId}" id="txTotal_${rowId}" value="${total}" readonly style="min-width:80px; font-weight:700; background:#f4f6f9;" /></td>
+    <td><input type="number" class="form-control" name="tx_gst_${rowId}" id="txGst_${rowId}" value="${gst}" step="0.01" oninput="calculateRowTotal(${rowId})" style="min-width:75px;" /></td>
+    <td><input type="number" class="form-control" name="tx_amt_${rowId}" id="txAmt_${rowId}" value="${amt}" step="0.01" oninput="calculateRowTotal(${rowId})" style="min-width:80px;" /></td>
+    <td><input type="number" class="form-control" name="tx_total_${rowId}" id="txTotal_${rowId}" value="${total}" readonly style="min-width:85px; font-weight:700; background:#f4f6f9;" /></td>
     <td>
       <button type="button" class="btn btn-danger btn-sm" onclick="removeTransactionRow(${rowId})">
         &times;
@@ -184,7 +182,7 @@ function calculateRowTotal(rowId) {
 
   const gst = gstInput ? parseNumericValue(gstInput.value, 0) : 0;
   const amt = amtInput ? parseNumericValue(amtInput.value, 0) : 0;
-  const total = gst + amt;
+  const total = amt + gst;
   totalInput.value = total.toFixed(2);
   recalculateEODTotalsFromRows();
 }
@@ -230,7 +228,11 @@ function recalculateEODTotalsFromRows() {
     const type = selectType ? selectType.value : 'U';
     const gst = gstInput ? parseNumericValue(gstInput.value, 0) : 0;
     const amt = amtInput ? parseNumericValue(amtInput.value, 0) : 0;
-    const rowTotal = totalInput ? parseNumericValue(totalInput.value, gst + amt) : (gst + amt);
+    const rowTotal = amt + gst;
+
+    if (totalInput) {
+      totalInput.value = rowTotal.toFixed(2);
+    }
 
     if (type === 'E') {
       enrolCount++;
@@ -469,87 +471,89 @@ async function parseEODPdfReport(typedarray) {
     transactionRowCount = 0;
 
     let loadedCount = 0;
-    let firstDetectedOp = '';
+    let detectedOp = document.getElementById('eodOperatorInput') ? document.getElementById('eodOperatorInput').value.trim() : 'S_NX_TS_047';
 
     extractedLines.forEach(line => {
+      const cleanLine = line.trim();
       // Look for line containing an enrolment number (14 to 28 digits)
-      const enrolMatch = line.match(/([0-9]{14,28}|[0-9]{4}\/[0-9]{4,6}\/[0-9]{4})/);
+      const enrolMatch = cleanLine.match(/\b([0-9]{14,28}|[0-9]{4}\/[0-9]{4,6}\/[0-9]{4})\b/);
       if (!enrolMatch) return;
 
-      const enrolNo = enrolMatch[0];
+      const enrolNo = enrolMatch[1];
+      const enrolPos = cleanLine.indexOf(enrolNo);
+      const afterEnrol = cleanLine.slice(enrolPos + enrolNo.length).trim();
 
-      // Determine Type (U, E, B, D)
+      // Match sequence: [Type] [MBU] [NRI] [OperatorID]
+      const prefixMatch = afterEnrol.match(/^([UEDB])\s+(Yes|No)\s+(Yes|No)\s+([A-Za-z0-9_]+)/i);
+
       let typeVal = 'U';
-      const typeMatch = line.match(/[0-9]{14,28}\s+([UEDB])\b/i);
-      if (typeMatch && typeMatch[1]) {
-        typeVal = typeMatch[1].toUpperCase();
-      } else if (/\b(E|NEW|ENROLMENT)\b/i.test(line)) {
-        typeVal = 'E';
-      } else if (/\b(B|BIO|BIOMETRIC)\b/i.test(line)) {
-        typeVal = 'B';
-      } else if (/\b(D|DOC|DOCUMENT)\b/i.test(line)) {
-        typeVal = 'D';
+      let isMbu = 'No';
+      let isNri = 'No';
+      let rowOpId = detectedOp;
+      let restAfterPrefix = afterEnrol;
+
+      if (prefixMatch) {
+        typeVal = prefixMatch[1].toUpperCase();
+        isMbu = prefixMatch[2];
+        isNri = prefixMatch[3];
+        rowOpId = prefixMatch[4];
+        if (!detectedOp) detectedOp = rowOpId;
+        restAfterPrefix = afterEnrol.slice(prefixMatch[0].length).trim();
       }
 
-      // Mandatory Biometric Update
-      const isMbu = /\bYes\b/i.test(line) && !line.includes('NRI Yes') ? 'Yes' : 'No';
-      const isNri = /\bNRI\s*Yes\b/i.test(line) ? 'Yes' : 'No';
-
-      // Operator ID
-      let rowOpId = '';
-      const opInLine = line.match(/(S_[A-Za-z0-9_]+|[0-9]{6,})/);
-      if (opInLine && opInLine[1] && opInLine[1] !== enrolNo) {
-        rowOpId = opInLine[1];
-        if (!firstDetectedOp) firstDetectedOp = rowOpId;
-      } else {
-        rowOpId = document.getElementById('eodOperatorInput') ? document.getElementById('eodOperatorInput').value : 'S_NX_TS_047';
-      }
-
-      // Resident Name (between proof token/operator and status)
+      // Extract Resident Name and Status
       let resName = `Resident ${loadedCount + 1}`;
-      const nameMatch = line.match(/(?:\b[D|HF]\b|S_[A-Za-z0-9_]+)\s+([A-Za-z\s.]+?)\s+(?:UPLOADED|PENDING|SUCCESS)/i);
-      if (nameMatch && nameMatch[1] && nameMatch[1].trim().length > 1) {
-        const clean = nameMatch[1].replace(/(Enrolment|Update|Biometric|Resident|Type|Status|GST|Amount)/gi, '').trim();
-        if (clean.length > 1) resName = clean;
-      }
-
-      // Status
       let rowStatus = 'UPLOADED';
-      if (line.includes('PENDING')) rowStatus = 'PENDING';
-      else if (line.includes('REJECTED')) rowStatus = 'REJECTED';
+      let afterStatus = restAfterPrefix;
 
-      // Extract trailing financial numbers: GST, Amount New, Amount Update, Total Charged
-      const numMatches = line.match(/(\d+\.\d+|\b\d+\b)/g) || [];
-      const trailingNumbers = numMatches.map(n => parseFloat(n)).filter(n => !isNaN(n));
-
-      let parsedGst = 0;
-      let parsedAmt = 0;
-
-      if (trailingNumbers.length >= 4) {
-        // Last 4 numbers in line: GST, New Fee, Update Fee, Total Amount
-        parsedGst = trailingNumbers[trailingNumbers.length - 4];
-        const newFee = trailingNumbers[trailingNumbers.length - 3];
-        const updateFee = trailingNumbers[trailingNumbers.length - 2];
-
-        parsedAmt = (typeVal === 'E') ? newFee : updateFee;
-      } else if (trailingNumbers.length >= 2) {
-        parsedGst = trailingNumbers[trailingNumbers.length - 2];
-        parsedAmt = trailingNumbers[trailingNumbers.length - 1];
-      } else {
-        if (typeVal === 'E' || isMbu === 'Yes') {
-          parsedGst = 0;
-          parsedAmt = 0;
-        } else if (typeVal === 'B') {
-          parsedGst = 19.07;
-          parsedAmt = 105.93;
-        } else {
-          parsedGst = 11.44;
-          parsedAmt = 63.56;
+      const statusMatch = restAfterPrefix.match(/(UPLOADED|PENDING|SUCCESS|REJECTED)/i);
+      if (statusMatch) {
+        rowStatus = statusMatch[1].toUpperCase();
+        const statusPos = restAfterPrefix.indexOf(statusMatch[0]);
+        const rawName = restAfterPrefix.slice(0, statusPos).trim();
+        if (rawName.length > 0) {
+          // Strip leading single-letter proof code like "D " or "HF "
+          const cleaned = rawName.replace(/^(?:D|HF|POA|POI|POR|DOB)\s+/i, '').trim();
+          resName = cleaned || rawName;
         }
+        afterStatus = restAfterPrefix.slice(statusPos + statusMatch[0].length).trim();
       }
 
-      // User Exact Formula: Total = Amount Charged + GST
-      const finalTotal = parsedAmt + parsedGst;
+      // Extract trailing decimal/numeric values: GST, NewFee, UpdateFee, TotalCharged
+      const decMatches = afterStatus.match(/[-+]?[0-9]*\.?[0-9]+/g) || [];
+      const numbers = decMatches.map(n => parseFloat(n)).filter(n => !isNaN(n));
+
+      let gstVal = 0;
+      let newFee = 0;
+      let updateFee = 0;
+      let totalCharged = 0;
+
+      if (numbers.length >= 4) {
+        gstVal = numbers[numbers.length - 4];
+        newFee = numbers[numbers.length - 3];
+        updateFee = numbers[numbers.length - 2];
+        totalCharged = numbers[numbers.length - 1];
+      } else if (numbers.length === 3) {
+        gstVal = numbers[0];
+        updateFee = numbers[1];
+        totalCharged = numbers[2];
+      } else if (numbers.length === 2) {
+        gstVal = numbers[0];
+        updateFee = numbers[1];
+        totalCharged = gstVal + updateFee;
+      } else if (numbers.length === 1) {
+        totalCharged = numbers[0];
+      }
+
+      let finalAmount = (typeVal === 'E') ? newFee : updateFee;
+      if (finalAmount === 0 && totalCharged > 0 && gstVal > 0) {
+        finalAmount = totalCharged - gstVal;
+      } else if (finalAmount === 0 && totalCharged > 0) {
+        finalAmount = totalCharged;
+      }
+
+      // User Strict Formula: Amount Charged + GST Applied = Total Amount Charged
+      const finalTotal = (totalCharged > 0) ? totalCharged : (finalAmount + gstVal);
 
       const rowObj = {
         enrolmentNo: enrolNo,
@@ -559,8 +563,8 @@ async function parseEODPdfReport(typedarray) {
         operatorId: rowOpId,
         resident: resName,
         status: rowStatus,
-        gstApplied: parsedGst,
-        amount: parsedAmt,
+        gstApplied: gstVal,
+        amount: finalAmount,
         totalAmount: finalTotal
       };
 
@@ -568,16 +572,16 @@ async function parseEODPdfReport(typedarray) {
       loadedCount++;
     });
 
-    if (firstDetectedOp) {
+    if (detectedOp) {
       const mainOpEl = document.getElementById('eodOperatorInput');
       if (mainOpEl && !mainOpEl.value) {
-        mainOpEl.value = firstDetectedOp;
+        mainOpEl.value = detectedOp;
       }
     }
 
     if (loadedCount > 0) {
       recalculateEODTotalsFromRows();
-      alert(`Successfully parsed and loaded ${loadedCount} transaction records from the PDF report! Total Volume and Amounts calculated.`);
+      alert(`Successfully parsed and loaded ${loadedCount} transaction records from the PDF report! Total Volume: ${loadedCount} | Total Amount Calculated.`);
     } else {
       alert("Could not automatically locate transaction rows in this PDF format. You can manually enter or use the Excel/CSV/HTML template.");
     }
