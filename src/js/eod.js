@@ -354,6 +354,11 @@ function handleEODFileUpload(input) {
  */
 async function parseEODPdfReport(typedarray) {
   try {
+    if (typeof pdfjsLib === 'undefined') {
+      alert("PDF library is loading. Please try again in 2 seconds.");
+      return;
+    }
+
     const loadingTask = pdfjsLib.getDocument({ data: typedarray });
     const pdf = await loadingTask.promise;
     let fullPdfText = "";
@@ -363,23 +368,27 @@ async function parseEODPdfReport(typedarray) {
       const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
       
-      // Group items by vertical Y position to reconstruct rows
+      // Cluster text items into rows with 4px vertical tolerance
       const items = textContent.items;
-      const linesMap = {};
+      const lines = [];
 
       items.forEach(item => {
-        const y = Math.round(item.transform[5]); // Y coordinate
-        if (!linesMap[y]) linesMap[y] = [];
-        linesMap[y].push(item);
+        const y = item.transform[5];
+        let foundLine = lines.find(l => Math.abs(l.y - y) <= 4);
+        if (!foundLine) {
+          foundLine = { y: y, items: [] };
+          lines.push(foundLine);
+        }
+        foundLine.items.push(item);
       });
 
       // Sort lines from top to bottom
-      const sortedY = Object.keys(linesMap).sort((a, b) => Number(b) - Number(a));
+      lines.sort((a, b) => b.y - a.y);
 
-      sortedY.forEach(y => {
+      lines.forEach(l => {
         // Sort tokens left to right
-        const lineItems = linesMap[y].sort((a, b) => a.transform[4] - b.transform[4]);
-        const lineText = lineItems.map(i => i.str).join(' ').trim();
+        l.items.sort((a, b) => a.transform[4] - b.transform[4]);
+        const lineText = l.items.map(i => i.str).join(' ').trim();
         if (lineText) {
           extractedLines.push(lineText);
           fullPdfText += lineText + "\n";
@@ -388,98 +397,187 @@ async function parseEODPdfReport(typedarray) {
     }
 
     // 1. Extract Metadata (Station, Registrar, Agency, Operator, Client Version)
-    const regMatch = fullPdfText.match(/Registrar\s*(?:Code)?\s*[:=-]\s*([0-9A-Za-z_]+)/i);
+    const regMatch = fullPdfText.match(/Registrar\s*(?:Code)?\s*[:=-]?\s*([0-9A-Za-z_]+)/i);
     if (regMatch && regMatch[1]) {
       const el = document.getElementById('eodRegistrar');
       if (el) el.value = regMatch[1].trim();
     }
 
-    const eaMatch = fullPdfText.match(/Enrolment\s*Agency\s*(?:Code)?\s*[:=-]\s*([0-9A-Za-z_]+)/i);
+    const eaMatch = fullPdfText.match(/Enrolment\s*Agency\s*(?:Code)?\s*[:=-]?\s*([0-9A-Za-z_]+)/i);
     if (eaMatch && eaMatch[1]) {
       const el = document.getElementById('eodEnrolmentAgency');
       if (el) el.value = eaMatch[1].trim();
     }
 
-    const stationMatch = fullPdfText.match(/Station\s*(?:ID)?\s*[:=-]\s*([0-9A-Za-z_-]+)/i);
+    const stationMatch = fullPdfText.match(/Station\s*(?:ID)?\s*[:=-]?\s*([0-9A-Za-z_-]+)/i);
     if (stationMatch && stationMatch[1]) {
       const el = document.getElementById('eodStationId');
       if (el) el.value = stationMatch[1].trim();
     }
 
-    const opMatch = fullPdfText.match(/Operator\s*(?:ID)?\s*[:=-]\s*([0-9A-Za-z_]+)/i);
+    const opMatch = fullPdfText.match(/Operator\s*(?:ID)?\s*[:=-]?\s*([0-9A-Za-z_]+)/i);
     if (opMatch && opMatch[1]) {
       const el = document.getElementById('eodOperatorInput');
       if (el) el.value = opMatch[1].trim();
     }
 
-    const verMatch = fullPdfText.match(/Client\s*Version\s*[:=-]\s*([0-9.]+)/i);
+    const verMatch = fullPdfText.match(/Version\s*(?:No\.?\s*Of\s*Client|No|Client)?\s*[:=-]?\s*([0-9.]+)/i);
     if (verMatch && verMatch[1]) {
       const el = document.getElementById('eodClientVersion');
       if (el) el.value = verMatch[1].trim();
     }
 
-    // 2. Parse Lines for Transaction Packets
-    const parsedRows = [
-      ["SNo", "Enrolment_No", "Type", "MBU", "NRI", "Operator_ID", "Resident_Name", "Status", "GST", "Amount"]
-    ];
-
-    let rowCount = 0;
-    extractedLines.forEach(line => {
-      // Look for lines containing an enrolment pattern (e.g. 2345/76581/2026 or 14/28 digit number)
-      const enrolMatch = line.match(/([0-9]{4}\/[0-9]{4,6}\/[0-9]{4}|[0-9]{4}\/[0-9]{5}\/[0-9]{4}|[0-9]{14,28})/);
-      if (enrolMatch) {
-        rowCount++;
-        const tokens = line.split(/\s+/);
-        const enrolNo = enrolMatch[0];
-        
-        // Detect Type
-        let type = 'U';
-        if (/\b(E|NEW|ENROLMENT)\b/i.test(line)) type = 'E';
-        else if (/\b(B|BIO|BIOMETRIC)\b/i.test(line)) type = 'B';
-        else if (/\b(D|DOC|DOCUMENT)\b/i.test(line)) type = 'D';
-
-        const mbu = /\b(YES|Y)\b/i.test(line) ? 'Yes' : 'No';
-        const nri = /\bNRI\b/i.test(line) ? 'Yes' : 'No';
-        const opId = document.getElementById('eodOperatorInput') ? document.getElementById('eodOperatorInput').value : 'S_NX_TS_047';
-        
-        // Estimate resident name
-        let resident = `Resident ${rowCount}`;
-        const nameMatch = line.match(/(?:UPLOADED|PENDING|SUCCESS)?\s*([A-Za-z\s.]+)(?:UPLOADED|PENDING|SUCCESS|$)/i);
-        if (nameMatch && nameMatch[1] && nameMatch[1].trim().length > 2) {
-          const cleanName = nameMatch[1].replace(/(Enrolment|Update|Biometric|Resident|Type|Status|GST|Amount)/gi, '').trim();
-          if (cleanName.length > 2) resident = cleanName;
-        }
-
-        let gst = "0.00";
-        let amt = "0.00";
-        if (type === 'E' || mbu === 'Yes') {
-          gst = "0.00";
-          amt = "0.00";
-        } else if (type === 'B') {
-          gst = "19.07";
-          amt = "105.93";
-        } else {
-          gst = "11.44";
-          amt = "63.56";
-        }
-
-        parsedRows.push([
-          String(rowCount),
-          enrolNo,
-          type,
-          mbu,
-          nri,
-          opId,
-          resident,
-          "UPLOADED",
-          gst,
-          amt
-        ]);
+    const lastRegMatch = fullPdfText.match(/Last\s*Registered\s*[:=-]?\s*([0-9/:\s-]+)/i);
+    if (lastRegMatch && lastRegMatch[1]) {
+      const el = document.getElementById('eodLastRegistered');
+      if (el) {
+        try {
+          const parts = lastRegMatch[1].trim().split(/[\s/:]+/);
+          if (parts.length >= 5) {
+            const d = parts[0].padStart(2, '0');
+            const m = parts[1].padStart(2, '0');
+            const y = parts[2];
+            const hr = parts[3].padStart(2, '0');
+            const min = parts[4].padStart(2, '0');
+            el.value = `${y}-${m}-${d}T${hr}:${min}`;
+          }
+        } catch (e) {}
       }
+    }
+
+    const lastSynchMatch = fullPdfText.match(/Last\s*Synch\s*[:=-]?\s*([0-9/:\s-]+)/i);
+    if (lastSynchMatch && lastSynchMatch[1]) {
+      const el = document.getElementById('eodLastSynch');
+      if (el) {
+        try {
+          const parts = lastSynchMatch[1].trim().split(/[\s/:]+/);
+          if (parts.length >= 5) {
+            const d = parts[0].padStart(2, '0');
+            const m = parts[1].padStart(2, '0');
+            const y = parts[2];
+            const hr = parts[3].padStart(2, '0');
+            const min = parts[4].padStart(2, '0');
+            el.value = `${y}-${m}-${d}T${hr}:${min}`;
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 2. Parse Lines for Transaction Packets
+    const tbody = document.getElementById('eodTxTableBody');
+    tbody.innerHTML = "";
+    transactionRowCount = 0;
+
+    let loadedCount = 0;
+    let firstDetectedOp = '';
+
+    extractedLines.forEach(line => {
+      // Look for line containing an enrolment number (14 to 28 digits)
+      const enrolMatch = line.match(/([0-9]{14,28}|[0-9]{4}\/[0-9]{4,6}\/[0-9]{4})/);
+      if (!enrolMatch) return;
+
+      const enrolNo = enrolMatch[0];
+
+      // Determine Type (U, E, B, D)
+      let typeVal = 'U';
+      const typeMatch = line.match(/[0-9]{14,28}\s+([UEDB])\b/i);
+      if (typeMatch && typeMatch[1]) {
+        typeVal = typeMatch[1].toUpperCase();
+      } else if (/\b(E|NEW|ENROLMENT)\b/i.test(line)) {
+        typeVal = 'E';
+      } else if (/\b(B|BIO|BIOMETRIC)\b/i.test(line)) {
+        typeVal = 'B';
+      } else if (/\b(D|DOC|DOCUMENT)\b/i.test(line)) {
+        typeVal = 'D';
+      }
+
+      // Mandatory Biometric Update
+      const isMbu = /\bYes\b/i.test(line) && !line.includes('NRI Yes') ? 'Yes' : 'No';
+      const isNri = /\bNRI\s*Yes\b/i.test(line) ? 'Yes' : 'No';
+
+      // Operator ID
+      let rowOpId = '';
+      const opInLine = line.match(/(S_[A-Za-z0-9_]+|[0-9]{6,})/);
+      if (opInLine && opInLine[1] && opInLine[1] !== enrolNo) {
+        rowOpId = opInLine[1];
+        if (!firstDetectedOp) firstDetectedOp = rowOpId;
+      } else {
+        rowOpId = document.getElementById('eodOperatorInput') ? document.getElementById('eodOperatorInput').value : 'S_NX_TS_047';
+      }
+
+      // Resident Name (between proof token/operator and status)
+      let resName = `Resident ${loadedCount + 1}`;
+      const nameMatch = line.match(/(?:\b[D|HF]\b|S_[A-Za-z0-9_]+)\s+([A-Za-z\s.]+?)\s+(?:UPLOADED|PENDING|SUCCESS)/i);
+      if (nameMatch && nameMatch[1] && nameMatch[1].trim().length > 1) {
+        const clean = nameMatch[1].replace(/(Enrolment|Update|Biometric|Resident|Type|Status|GST|Amount)/gi, '').trim();
+        if (clean.length > 1) resName = clean;
+      }
+
+      // Status
+      let rowStatus = 'UPLOADED';
+      if (line.includes('PENDING')) rowStatus = 'PENDING';
+      else if (line.includes('REJECTED')) rowStatus = 'REJECTED';
+
+      // Extract trailing financial numbers: GST, Amount New, Amount Update, Total Charged
+      const numMatches = line.match(/(\d+\.\d+|\b\d+\b)/g) || [];
+      const trailingNumbers = numMatches.map(n => parseFloat(n)).filter(n => !isNaN(n));
+
+      let parsedGst = 0;
+      let parsedAmt = 0;
+
+      if (trailingNumbers.length >= 4) {
+        // Last 4 numbers in line: GST, New Fee, Update Fee, Total Amount
+        parsedGst = trailingNumbers[trailingNumbers.length - 4];
+        const newFee = trailingNumbers[trailingNumbers.length - 3];
+        const updateFee = trailingNumbers[trailingNumbers.length - 2];
+
+        parsedAmt = (typeVal === 'E') ? newFee : updateFee;
+      } else if (trailingNumbers.length >= 2) {
+        parsedGst = trailingNumbers[trailingNumbers.length - 2];
+        parsedAmt = trailingNumbers[trailingNumbers.length - 1];
+      } else {
+        if (typeVal === 'E' || isMbu === 'Yes') {
+          parsedGst = 0;
+          parsedAmt = 0;
+        } else if (typeVal === 'B') {
+          parsedGst = 19.07;
+          parsedAmt = 105.93;
+        } else {
+          parsedGst = 11.44;
+          parsedAmt = 63.56;
+        }
+      }
+
+      // User Exact Formula: Total = Amount Charged + GST
+      const finalTotal = parsedAmt + parsedGst;
+
+      const rowObj = {
+        enrolmentNo: enrolNo,
+        type: typeVal,
+        mandatoryBiometricUpdate: isMbu,
+        isNRI: isNri,
+        operatorId: rowOpId,
+        resident: resName,
+        status: rowStatus,
+        gstApplied: parsedGst,
+        amount: parsedAmt,
+        totalAmount: finalTotal
+      };
+
+      addTransactionRow(rowObj);
+      loadedCount++;
     });
 
-    if (parsedRows.length > 1) {
-      processParsedSheetData(parsedRows);
+    if (firstDetectedOp) {
+      const mainOpEl = document.getElementById('eodOperatorInput');
+      if (mainOpEl && !mainOpEl.value) {
+        mainOpEl.value = firstDetectedOp;
+      }
+    }
+
+    if (loadedCount > 0) {
+      recalculateEODTotalsFromRows();
+      alert(`Successfully parsed and loaded ${loadedCount} transaction records from the PDF report! Total Volume and Amounts calculated.`);
     } else {
       alert("Could not automatically locate transaction rows in this PDF format. You can manually enter or use the Excel/CSV/HTML template.");
     }
