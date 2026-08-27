@@ -8,7 +8,16 @@
       "scratch/**",
       "*.zip",
       "server.js",
-      "package-lock.json"
+      "package.json",
+      "package-lock.json",
+      "*.bat",
+      "*.cmd",
+      "*.exe",
+      "*.sh",
+      "*.ps1",
+      "*.sql",
+      "*.md",
+      "docs/**"
     ],
     "headers": [
       {
