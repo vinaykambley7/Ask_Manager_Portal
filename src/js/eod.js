@@ -63,7 +63,7 @@ function parseNumericValue(val, fallback = 0) {
 }
 
 /**
- * Add a Single Streamlined Transaction Row
+ * Add a Single Streamlined Transaction Row (Direct Display without dropdowns)
  */
 function addTransactionRow(rowData = null) {
   transactionRowCount++;
@@ -73,6 +73,11 @@ function addTransactionRow(rowData = null) {
 
   const enrolNo = rowData ? (rowData.enrolmentNo || '') : '';
   const type = rowData ? (rowData.type || 'U') : 'U';
+  let typeLabel = 'Update (U)';
+  if (type === 'E') typeLabel = 'New Enrolment (E)';
+  else if (type === 'B') typeLabel = 'Biometric (B)';
+  else if (type === 'D') typeLabel = 'Doc Update (D)';
+
   const rawMbu = rowData ? (rowData.mandatoryBiometricUpdate || 'No') : 'No';
   const isMbuYes = String(rawMbu).trim().toLowerCase().startsWith('y');
   const mbu = isMbuYes ? 'Yes' : 'No';
@@ -102,41 +107,26 @@ function addTransactionRow(rowData = null) {
   tr.id = `txRow_${rowId}`;
   tr.innerHTML = `
     <td><b>${rowId}</b></td>
-    <td><input type="text" class="form-control" name="tx_enrolNo_${rowId}" value="${escapeHtml(enrolNo)}" placeholder="Enrolment / Packet No" required style="min-width:190px;" /></td>
+    <td><input type="text" class="form-control" name="tx_enrolNo_${rowId}" value="${escapeHtml(enrolNo)}" placeholder="Enrolment / Packet No" required style="min-width:190px; font-weight:600;" /></td>
     <td>
-      <select class="form-control" name="tx_type_${rowId}" onchange="handleTxTypeChange(${rowId}, this.value)" style="min-width:135px; font-weight:600; padding:6px 8px;">
-        <option value="U" ${type === 'U' ? 'selected' : ''}>Update (U)</option>
-        <option value="E" ${type === 'E' ? 'selected' : ''}>New Enrolment (E)</option>
-        <option value="B" ${type === 'B' ? 'selected' : ''}>Biometric (B)</option>
-        <option value="D" ${type === 'D' ? 'selected' : ''}>Doc Update (D)</option>
-      </select>
+      <input type="text" class="form-control" name="tx_type_${rowId}" id="txType_${rowId}" value="${typeLabel}" style="min-width:130px; font-weight:600; text-align:center; background:#f8f9fa;" />
     </td>
     <td>
-      <select class="form-control" name="tx_mbu_${rowId}" onchange="handleMbuChange(${rowId}, this.value)" style="min-width:90px; font-weight:600; padding:6px 8px;">
-        <option value="No" ${!isMbuYes ? 'selected' : ''}>No</option>
-        <option value="Yes" ${isMbuYes ? 'selected' : ''}>Yes</option>
-      </select>
+      <input type="text" class="form-control" name="tx_mbu_${rowId}" id="txMbu_${rowId}" value="${mbu}" style="min-width:70px; font-weight:700; text-align:center; color:${isMbuYes ? '#d35400' : '#27ae60'}; background:${isMbuYes ? '#fef5e7' : '#eafaf1'};" />
     </td>
     <td>
-      <select class="form-control" name="tx_nri_${rowId}" style="min-width:90px; font-weight:600; padding:6px 8px;">
-        <option value="No" ${!isNriYes ? 'selected' : ''}>No</option>
-        <option value="Yes" ${isNriYes ? 'selected' : ''}>Yes</option>
-      </select>
+      <input type="text" class="form-control" name="tx_nri_${rowId}" id="txNri_${rowId}" value="${nri}" style="min-width:70px; font-weight:700; text-align:center; color:#2c3e50; background:#f8f9fa;" />
     </td>
     <td>
-      <input type="text" class="form-control" name="tx_opId_${rowId}" id="txOpId_${rowId}" value="${escapeHtml(opId)}" placeholder="Operator ID" style="min-width:140px;" required />
+      <input type="text" class="form-control" name="tx_opId_${rowId}" id="txOpId_${rowId}" value="${escapeHtml(opId)}" placeholder="Operator ID" style="min-width:130px; font-weight:600;" required />
     </td>
-    <td><input type="text" class="form-control" name="tx_resident_${rowId}" value="${escapeHtml(resident)}" placeholder="Resident Name" style="min-width:180px;" required /></td>
+    <td><input type="text" class="form-control" name="tx_resident_${rowId}" value="${escapeHtml(resident)}" placeholder="Resident Name" style="min-width:170px; font-weight:600;" required /></td>
     <td>
-      <select class="form-control" name="tx_status_${rowId}" style="min-width:130px; font-weight:600; padding:6px 8px;">
-        <option value="UPLOADED" ${statusVal === 'UPLOADED' ? 'selected' : ''}>UPLOADED</option>
-        <option value="PENDING" ${statusVal === 'PENDING' ? 'selected' : ''}>PENDING</option>
-        <option value="REJECTED" ${statusVal === 'REJECTED' ? 'selected' : ''}>REJECTED</option>
-      </select>
+      <input type="text" class="form-control" name="tx_status_${rowId}" id="txStatus_${rowId}" value="${statusVal}" style="min-width:110px; font-weight:700; text-align:center; color:${statusVal === 'UPLOADED' ? '#27ae60' : (statusVal === 'PENDING' ? '#d68910' : '#c0392b')}; background:${statusVal === 'UPLOADED' ? '#eafaf1' : (statusVal === 'PENDING' ? '#fef9e7' : '#fdedec')};" />
     </td>
-    <td><input type="number" class="form-control" name="tx_gst_${rowId}" id="txGst_${rowId}" value="${gst}" step="0.01" oninput="calculateRowTotal(${rowId})" style="min-width:80px;" /></td>
-    <td><input type="number" class="form-control" name="tx_amt_${rowId}" id="txAmt_${rowId}" value="${amt}" step="0.01" oninput="calculateRowTotal(${rowId})" style="min-width:85px;" /></td>
-    <td><input type="number" class="form-control" name="tx_total_${rowId}" id="txTotal_${rowId}" value="${total}" readonly style="min-width:90px; font-weight:700; background:#f4f6f9;" /></td>
+    <td><input type="number" class="form-control" name="tx_gst_${rowId}" id="txGst_${rowId}" value="${gst}" step="0.01" oninput="calculateRowTotal(${rowId})" style="min-width:75px; text-align:right; font-weight:600;" /></td>
+    <td><input type="number" class="form-control" name="tx_amt_${rowId}" id="txAmt_${rowId}" value="${amt}" step="0.01" oninput="calculateRowTotal(${rowId})" style="min-width:80px; text-align:right; font-weight:600;" /></td>
+    <td><input type="number" class="form-control" name="tx_total_${rowId}" id="txTotal_${rowId}" value="${total}" readonly style="min-width:85px; font-weight:800; text-align:right; background:#f4f6f9; color:#1a5276;" /></td>
     <td>
       <button type="button" class="btn btn-danger btn-sm" onclick="removeTransactionRow(${rowId})">
         &times;
@@ -147,41 +137,6 @@ function addTransactionRow(rowData = null) {
   tbody.appendChild(tr);
   reindexTransactionRows();
   recalculateEODTotalsFromRows();
-}
-
-function handleTxTypeChange(rowId, type) {
-  const gstInput = document.getElementById(`txGst_${rowId}`);
-  const amtInput = document.getElementById(`txAmt_${rowId}`);
-  const totalInput = document.getElementById(`txTotal_${rowId}`);
-  if (!amtInput) return;
-  
-  if (type === 'E') {
-    if (gstInput) gstInput.value = "0.00";
-    amtInput.value = "0.00";
-    if (totalInput) totalInput.value = "0.00";
-  } else if (type === 'B') {
-    if (gstInput) gstInput.value = "19.07";
-    amtInput.value = "105.93";
-    if (totalInput) totalInput.value = "125.00";
-  } else {
-    // Demographic (U) or Document (D)
-    if (gstInput) gstInput.value = "11.44";
-    amtInput.value = "63.56";
-    if (totalInput) totalInput.value = "75.00";
-  }
-  calculateRowTotal(rowId);
-}
-
-function handleMbuChange(rowId, mbuVal) {
-  const gstInput = document.getElementById(`txGst_${rowId}`);
-  const amtInput = document.getElementById(`txAmt_${rowId}`);
-  const totalInput = document.getElementById(`txTotal_${rowId}`);
-  if (mbuVal === 'Yes') {
-    if (gstInput) gstInput.value = "0.00";
-    if (amtInput) amtInput.value = "0.00";
-    if (totalInput) totalInput.value = "0.00";
-  }
-  calculateRowTotal(rowId);
 }
 
 function calculateRowTotal(rowId) {
@@ -230,12 +185,12 @@ function recalculateEODTotalsFromRows() {
   let totalAmount = 0;
 
   rows.forEach(tr => {
-    const selectType = tr.querySelector('select[name^="tx_type_"]');
+    const typeEl = tr.querySelector('[name^="tx_type_"]');
     const gstInput = tr.querySelector('input[name^="tx_gst_"]');
     const amtInput = tr.querySelector('input[name^="tx_amt_"]');
     const totalInput = tr.querySelector('input[name^="tx_total_"]');
 
-    const type = selectType ? selectType.value : 'U';
+    const typeRaw = typeEl ? typeEl.value.toUpperCase().trim() : 'U';
     const gst = gstInput ? parseNumericValue(gstInput.value, 0) : 0;
     const amt = amtInput ? parseNumericValue(amtInput.value, 0) : 0;
     const rowTotal = amt + gst;
@@ -244,7 +199,7 @@ function recalculateEODTotalsFromRows() {
       totalInput.value = rowTotal.toFixed(2);
     }
 
-    if (type === 'E') {
+    if (typeRaw.startsWith('E') || typeRaw.includes('NEW') || typeRaw.includes('ENROL')) {
       enrolCount++;
     } else {
       updateCount++;
@@ -948,17 +903,22 @@ function handleEODSubmit(event) {
 
   trs.forEach((tr, index) => {
     const enrolInput = tr.querySelector('input[name^="tx_enrolNo_"]');
-    const typeSelect = tr.querySelector('select[name^="tx_type_"]');
-    const mbuSelect = tr.querySelector('select[name^="tx_mbu_"]');
-    const nriSelect = tr.querySelector('select[name^="tx_nri_"]');
+    const typeEl = tr.querySelector('[name^="tx_type_"]');
+    const mbuEl = tr.querySelector('[name^="tx_mbu_"]');
+    const nriEl = tr.querySelector('[name^="tx_nri_"]');
     const opInput = tr.querySelector('input[name^="tx_opId_"]');
     const residentInput = tr.querySelector('input[name^="tx_resident_"]');
-    const statusSelect = tr.querySelector('select[name^="tx_status_"]');
+    const statusEl = tr.querySelector('[name^="tx_status_"]');
     const gstInput = tr.querySelector('input[name^="tx_gst_"]');
     const amtInput = tr.querySelector('input[name^="tx_amt_"]');
     const totalInput = tr.querySelector('input[name^="tx_total_"]');
 
-    const type = typeSelect ? typeSelect.value : 'U';
+    const rawType = typeEl ? typeEl.value.toUpperCase().trim() : 'U';
+    let typeVal = 'U';
+    if (rawType.startsWith('E') || rawType.includes('NEW')) typeVal = 'E';
+    else if (rawType.startsWith('B') || rawType.includes('BIO')) typeVal = 'B';
+    else if (rawType.startsWith('D') || rawType.includes('DOC')) typeVal = 'D';
+
     const gstVal = gstInput ? parseNumericValue(gstInput.value, 0) : 0;
     const amtVal = amtInput ? parseNumericValue(amtInput.value, 0) : 0;
     const rowTotal = gstVal + amtVal;
@@ -967,7 +927,7 @@ function handleEODSubmit(event) {
       totalInput.value = rowTotal.toFixed(2);
     }
 
-    if (type === 'E') {
+    if (typeVal === 'E') {
       enrolCount++;
     } else {
       updateCount++;
@@ -977,12 +937,12 @@ function handleEODSubmit(event) {
     const rowData = {
       sno: index + 1,
       enrolmentNo: enrolInput ? enrolInput.value.trim() : `EID-${index + 1}`,
-      type: type,
-      mandatoryBiometricUpdate: mbuSelect ? mbuSelect.value : 'No',
-      isNRI: nriSelect ? nriSelect.value : 'No',
+      type: typeVal,
+      mandatoryBiometricUpdate: mbuEl ? mbuEl.value.trim() : 'No',
+      isNRI: nriEl ? nriEl.value.trim() : 'No',
       operatorId: opInput ? opInput.value.trim() : operatorId,
       resident: residentInput ? residentInput.value.trim() : `Resident ${index + 1}`,
-      status: statusSelect ? statusSelect.value : 'UPLOADED',
+      status: statusEl ? statusEl.value.trim() : 'UPLOADED',
       gstApplied: gstVal,
       amount: amtVal,
       totalAmount: rowTotal
