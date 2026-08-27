@@ -1,0 +1,69 @@
+[
+  {
+    "submissionId": "EOD-2026-0001",
+    "managerName": "Ramesh Kumar",
+    "center": "Anthosh Nagar",
+    "date": "2026-08-27",
+    "timestamp": "2026-08-27T10:30:00.000Z",
+    "reportInfo": {
+      "registrar": "818",
+      "enrolmentAgency": "2081",
+      "operator": "S_NX_TS_047",
+      "stationId": "40026",
+      "lastRegistered": "2026-08-27T10:15:00",
+      "lastSynch": "2026-08-27T10:20:00",
+      "clientVersion": "3.3.4.2"
+    },
+    "summary": {
+      "enrolments": 6,
+      "updates": 49,
+      "total": 55
+    },
+    "transactions": [
+      {
+        "sno": 1,
+        "enrolmentNo": "23457658/2026-08-27",
+        "appointmentId": "APPT-001",
+        "type": "U",
+        "mandatoryBiometricUpdate": "No",
+        "isNRI": "No",
+        "tinNumber": "TYR4565U",
+        "operatorId": "S_NX_TS_047",
+        "reviewerId": "S_NX_TS_048",
+        "introducer": "D",
+        "proof": "D",
+        "resident": "K. Rajesh",
+        "status": "UPLOADED",
+        "introducerReviewStatus": "Accepted",
+        "userReviewStatus": "Approved",
+        "gstApplied": 0,
+        "amountNewEnrolment": 0,
+        "amountUpdateOperator": 63.56,
+        "totalAmount": 63.56
+      },
+      {
+        "sno": 2,
+        "enrolmentNo": "23459812/2026-08-27",
+        "appointmentId": "APPT-002",
+        "type": "E",
+        "mandatoryBiometricUpdate": "Yes",
+        "isNRI": "No",
+        "tinNumber": "TYR7781U",
+        "operatorId": "S_NX_TS_047",
+        "reviewerId": "S_NX_TS_048",
+        "introducer": "D",
+        "proof": "HF",
+        "resident": "S. Kavitha",
+        "status": "UPLOADED",
+        "introducerReviewStatus": "Accepted",
+        "userReviewStatus": "Approved",
+        "gstApplied": 0,
+        "amountNewEnrolment": 50.00,
+        "amountUpdateOperator": 0,
+        "totalAmount": 50.00
+      }
+    ],
+    "issues": "None",
+    "remarks": "Completed daily target smoothly"
+  }
+]

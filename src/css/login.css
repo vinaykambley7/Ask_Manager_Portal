@@ -1,0 +1,84 @@
+/* ==========================================================================
+   LOGIN SCREEN, TABS & AUTH FORMS
+   ========================================================================== */
+.login-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a5276 0%, #2e86c1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 460px;
+  overflow: hidden;
+}
+
+.login-header {
+  background: #fafbfc;
+  padding: 28px 28px 20px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.login-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--primary-dark);
+}
+
+.login-header p {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.login-tab-switcher {
+  display: flex;
+  background: #eef2f5;
+  padding: 4px;
+  border-radius: 10px;
+  margin: 16px auto 0;
+  gap: 4px;
+}
+
+.login-tab-btn {
+  flex: 1;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.login-tab-btn.active {
+  background: #ffffff;
+  color: var(--primary-dark);
+  box-shadow: var(--shadow-sm);
+}
+
+.login-body {
+  padding: 28px;
+}
+
+.login-pane {
+  display: none;
+}
+
+.login-pane.active {
+  display: block;
+  animation: fadeIn 0.2s ease;
+}

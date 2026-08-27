@@ -1,0 +1,32 @@
+[
+  {
+    "workId": "WORK-001",
+    "assignedTo": "Ramesh Kumar",
+    "center": "Anthosh Nagar",
+    "title": "Verify operator biometric kits & compliance documents",
+    "description": "Perform full physical verification of all active stations and upload checklist.",
+    "priority": "High",
+    "assignedDate": "2026-08-27",
+    "dueDate": "2026-08-28",
+    "status": "In Progress",
+    "instructions": "Submit updated list and signed confirmation sheet.",
+    "comments": [
+      "[10:00 AM]: Started station inspection"
+    ],
+    "createdAt": "2026-08-27T09:00:00.000Z"
+  },
+  {
+    "workId": "WORK-002",
+    "assignedTo": "Mounika",
+    "center": "A.S. Rao Nagar",
+    "title": "Hardware Firmware Upgrade",
+    "description": "Ensure all client machines are updated to client version 3.3.4.2.",
+    "priority": "Medium",
+    "assignedDate": "2026-08-27",
+    "dueDate": "2026-08-28",
+    "status": "Not Started",
+    "instructions": "Verify checksum after patch installation.",
+    "comments": [],
+    "createdAt": "2026-08-27T09:30:00.000Z"
+  }
+]

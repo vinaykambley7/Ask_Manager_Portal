@@ -1,0 +1,19 @@
+# Node modules
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Environment & Private Keys
+.env
+.env.local
+.env.production
+
+# OS generated files
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Temporary artifacts & archives
+*.zip
+scratch/
+.system_generated/

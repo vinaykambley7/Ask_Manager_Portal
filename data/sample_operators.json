@@ -1,0 +1,68 @@
+[
+  {
+    "operatorId": "S_NX_TS_047",
+    "operatorName": "Raj Kumar",
+    "managerName": "Ramesh Kumar",
+    "center": "Anthosh Nagar",
+    "certification": "Certified",
+    "qualification": "Graduate",
+    "certificateFile": "uidai_cert_S_NX_TS_047.pdf",
+    "certificateRegNo": "UIDAI-CERT-98421",
+    "createdAt": "2026-08-27T09:30:00"
+  },
+  {
+    "operatorId": "S_NX_TS_048",
+    "operatorName": "Srinivas Rao",
+    "managerName": "Ramesh Kumar",
+    "center": "Anthosh Nagar",
+    "certification": "Certified",
+    "qualification": "Post Graduate",
+    "certificateFile": "uidai_cert_S_NX_TS_048.pdf",
+    "certificateRegNo": "UIDAI-CERT-98422",
+    "createdAt": "2026-08-27T09:40:00"
+  },
+  {
+    "operatorId": "S_NX_AS_102",
+    "operatorName": "P. Swathi",
+    "managerName": "Mounika",
+    "center": "A.S. Rao Nagar",
+    "certification": "Certified",
+    "qualification": "Graduate",
+    "certificateFile": "nseit_cert_S_NX_AS_102.pdf",
+    "certificateRegNo": "NSEIT-CERT-11204",
+    "createdAt": "2026-08-27T09:15:00"
+  },
+  {
+    "operatorId": "S_NX_GD_205",
+    "operatorName": "K. Venkatesh",
+    "managerName": "Shekar",
+    "center": "Gadwa",
+    "certification": "In-Training",
+    "qualification": "Diploma",
+    "certificateFile": "",
+    "certificateRegNo": "",
+    "createdAt": "2026-08-27T08:50:00"
+  },
+  {
+    "operatorId": "S_NX_VP_310",
+    "operatorName": "Ananya Reddy",
+    "managerName": "Naithika",
+    "center": "Vanasthalipuram",
+    "certification": "Certified",
+    "qualification": "Graduate",
+    "certificateFile": "uidai_cert_S_NX_VP_310.pdf",
+    "certificateRegNo": "UIDAI-CERT-77319",
+    "createdAt": "2026-08-27T10:00:00"
+  },
+  {
+    "operatorId": "S_NX_KM_412",
+    "operatorName": "Md. Imran",
+    "managerName": "Khadher",
+    "center": "Khamam",
+    "certification": "Certified",
+    "qualification": "Graduate",
+    "certificateFile": "uidai_cert_S_NX_KM_412.pdf",
+    "certificateRegNo": "UIDAI-CERT-44102",
+    "createdAt": "2026-08-27T09:10:00"
+  }
+]
