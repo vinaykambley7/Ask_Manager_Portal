@@ -52,6 +52,17 @@ function updateEODSummaryFromInputs() {
 }
 
 /**
+ * Helper to clean and parse numeric currency/fee values
+ */
+function parseNumericValue(val, fallback = 0) {
+  if (val === null || val === undefined) return fallback;
+  const str = String(val).replace(/[^0-9.-]/g, '').trim();
+  if (str === '') return fallback;
+  const num = parseFloat(str);
+  return isNaN(num) ? fallback : num;
+}
+
+/**
  * Add a Single Streamlined Transaction Row
  */
 function addTransactionRow(rowData = null) {
@@ -66,9 +77,20 @@ function addTransactionRow(rowData = null) {
   const nri = rowData ? (rowData.isNRI || 'No') : 'No';
   const resident = rowData ? (rowData.resident || '') : '';
   const status = rowData ? (rowData.status || 'UPLOADED') : 'UPLOADED';
-  const gst = rowData ? (parseFloat(rowData.gstApplied) || 0).toFixed(2) : '0.00';
-  const amt = rowData ? (parseFloat(rowData.amount) || (type === 'E' ? 50 : 50)).toFixed(2) : (type === 'E' ? '50.00' : '50.00');
-  const total = (parseFloat(gst) + parseFloat(amt)).toFixed(2);
+  
+  const gstNum = rowData ? parseNumericValue(rowData.gstApplied, 0) : 0;
+  
+  let defaultAmt = 50;
+  if (type === 'E' || mbu === 'Yes') defaultAmt = 0;
+  else if (type === 'B') defaultAmt = 100;
+  else defaultAmt = 50;
+
+  const amtNum = rowData && rowData.amount !== undefined ? parseNumericValue(rowData.amount, defaultAmt) : defaultAmt;
+  const totalNum = gstNum + amtNum;
+
+  const gst = gstNum.toFixed(2);
+  const amt = amtNum.toFixed(2);
+  const total = totalNum.toFixed(2);
 
   const tbody = document.getElementById('eodTxTableBody');
   const tr = document.createElement('tr');
@@ -85,7 +107,7 @@ function addTransactionRow(rowData = null) {
       </select>
     </td>
     <td>
-      <select class="form-control" name="tx_mbu_${rowId}">
+      <select class="form-control" name="tx_mbu_${rowId}" onchange="handleMbuChange(${rowId}, this.value)">
         <option value="No" ${mbu === 'No' ? 'selected' : ''}>No</option>
         <option value="Yes" ${mbu === 'Yes' ? 'selected' : ''}>Yes</option>
       </select>
@@ -124,10 +146,10 @@ function addTransactionRow(rowData = null) {
 
 function handleTxTypeChange(rowId, type) {
   const amtInput = document.getElementById(`txAmt_${rowId}`);
+  if (!amtInput) return;
+  
   if (type === 'E') {
-    amtInput.value = "50.00";
-  } else if (type === 'U') {
-    amtInput.value = "50.00";
+    amtInput.value = "0.00";
   } else if (type === 'B') {
     amtInput.value = "100.00";
   } else {
@@ -136,11 +158,24 @@ function handleTxTypeChange(rowId, type) {
   calculateRowTotal(rowId);
 }
 
+function handleMbuChange(rowId, mbuVal) {
+  const amtInput = document.getElementById(`txAmt_${rowId}`);
+  if (mbuVal === 'Yes' && amtInput) {
+    amtInput.value = "0.00";
+  }
+  calculateRowTotal(rowId);
+}
+
 function calculateRowTotal(rowId) {
-  const gst = parseFloat(document.getElementById(`txGst_${rowId}`).value) || 0;
-  const amt = parseFloat(document.getElementById(`txAmt_${rowId}`).value) || 0;
+  const gstInput = document.getElementById(`txGst_${rowId}`);
+  const amtInput = document.getElementById(`txAmt_${rowId}`);
+  const totalInput = document.getElementById(`txTotal_${rowId}`);
+  if (!totalInput) return;
+
+  const gst = gstInput ? parseNumericValue(gstInput.value, 0) : 0;
+  const amt = amtInput ? parseNumericValue(amtInput.value, 0) : 0;
   const total = gst + amt;
-  document.getElementById(`txTotal_${rowId}`).value = total.toFixed(2);
+  totalInput.value = total.toFixed(2);
   recalculateEODTotalsFromRows();
 }
 
@@ -155,9 +190,12 @@ function removeTransactionRow(rowId) {
 
 function reindexTransactionRows() {
   const tbody = document.getElementById('eodTxTableBody');
+  if (!tbody) return;
   const rows = tbody.querySelectorAll('tr');
   rows.forEach((r, idx) => {
-    r.cells[0].innerHTML = `<b>${idx + 1}</b>`;
+    if (r.cells && r.cells[0]) {
+      r.cells[0].innerHTML = `<b>${idx + 1}</b>`;
+    }
   });
 }
 
@@ -175,10 +213,18 @@ function recalculateEODTotalsFromRows() {
 
   rows.forEach(tr => {
     const selectType = tr.querySelector('select[name^="tx_type_"]');
+    const gstInput = tr.querySelector('input[name^="tx_gst_"]');
+    const amtInput = tr.querySelector('input[name^="tx_amt_"]');
     const totalInput = tr.querySelector('input[name^="tx_total_"]');
 
     const type = selectType ? selectType.value : 'U';
-    const rowTotal = totalInput ? (parseFloat(totalInput.value) || 0) : 0;
+    const gst = gstInput ? parseNumericValue(gstInput.value, 0) : 0;
+    const amt = amtInput ? parseNumericValue(amtInput.value, 0) : 0;
+    const rowTotal = gst + amt;
+
+    if (totalInput) {
+      totalInput.value = rowTotal.toFixed(2);
+    }
 
     if (type === 'E') {
       enrolCount++;
@@ -190,7 +236,7 @@ function recalculateEODTotalsFromRows() {
 
   const totalVolume = enrolCount + updateCount;
 
-  // Update input fields
+  // Update input fields in Section 2
   const enrolInput = document.getElementById('eodEnrolCount');
   const updateInput = document.getElementById('eodUpdateCount');
   const totalInput = document.getElementById('eodTotalCount');
@@ -398,7 +444,10 @@ async function parseEODPdfReport(typedarray) {
           if (cleanName.length > 2) resident = cleanName;
         }
 
-        const amt = type === 'B' ? "100" : "50";
+        let amt = "50";
+        if (type === 'E' || mbu === 'Yes') amt = "0";
+        else if (type === 'B') amt = "100";
+        else amt = "50";
 
         parsedRows.push([
           String(rowCount),
@@ -512,17 +561,19 @@ function processParsedSheetData(rows) {
   const headerRow = rows[0].map(h => String(h).toLowerCase().replace(/[^a-z0-9]/g, ''));
   const dataRows = rows.slice(1);
 
-  // Identify column indices
-  let colEnrol = headerRow.findIndex(h => h.includes('enrol') || h.includes('packet') || h.includes('eid') || h.includes('number'));
-  let colType = headerRow.findIndex(h => h.includes('type'));
+  // Identify column indices with smart multi-pattern detection
+  let colEnrol = headerRow.findIndex(h => h.includes('enrol') || h.includes('packet') || h.includes('eid') || h.includes('number') || h.includes('appid'));
+  let colType = headerRow.findIndex(h => h.includes('type') || h.includes('service'));
   let colMbu = headerRow.findIndex(h => h.includes('mbu') || h.includes('biometric'));
   let colNri = headerRow.findIndex(h => h.includes('nri'));
   let colOp = headerRow.findIndex(h => h.includes('operator') || h.includes('opid') || h.includes('user'));
-  let colResident = headerRow.findIndex(h => h.includes('resident') || h.includes('name'));
-  let colStatus = headerRow.findIndex(h => h.includes('status'));
-  let colGst = headerRow.findIndex(h => h.includes('gst'));
-  let colAmt = headerRow.findIndex(h => h.includes('amount') || h.includes('fee') || h.includes('price') || h.includes('total'));
+  let colResident = headerRow.findIndex(h => h.includes('resident') || h.includes('name') || h.includes('citizen') || h.includes('applicant'));
+  let colStatus = headerRow.findIndex(h => h.includes('status') || h.includes('sync'));
+  let colGst = headerRow.findIndex(h => h.includes('gst') || h.includes('tax'));
+  let colAmt = headerRow.findIndex(h => (h.includes('amount') || h.includes('fee') || h.includes('charge') || h.includes('price')) && !h.includes('total'));
+  let colTotal = headerRow.findIndex(h => h.includes('totalamount') || (h.includes('total') && h.includes('amt')));
 
+  if (colAmt === -1 && colTotal !== -1) colAmt = colTotal;
   if (colEnrol === -1) colEnrol = 1;
   if (colType === -1) colType = 2;
   if (colResident === -1) colResident = 6;
@@ -538,29 +589,44 @@ function processParsedSheetData(rows) {
 
     // Determine Type
     let typeVal = 'U';
-    if (colType > -1 && r[colType]) {
-      const rawType = String(r[colType]).toUpperCase();
-      if (rawType.includes('E') || rawType.includes('NEW') || rawType.includes('ENROL')) {
+    if (colType > -1 && r[colType] !== undefined && r[colType] !== null) {
+      const rawType = String(r[colType]).toUpperCase().trim();
+      if (rawType.startsWith('E') || rawType.includes('NEW') || rawType.includes('ENROL')) {
         typeVal = 'E';
-      } else if (rawType.includes('B') || rawType.includes('BIO')) {
+      } else if (rawType.startsWith('B') || rawType.includes('BIO')) {
         typeVal = 'B';
-      } else if (rawType.includes('D') || rawType.includes('DOC')) {
+      } else if (rawType.startsWith('D') || rawType.includes('DOC')) {
         typeVal = 'D';
       } else {
         typeVal = 'U';
       }
     }
 
+    const isMbu = colMbu > -1 && r[colMbu] ? (String(r[colMbu]).toUpperCase().includes('Y') ? 'Yes' : 'No') : 'No';
+    const isNri = colNri > -1 && r[colNri] ? (String(r[colNri]).toUpperCase().includes('Y') ? 'Yes' : 'No') : 'No';
+
+    // Parse GST & Fee accurately
+    const parsedGst = colGst > -1 && r[colGst] !== undefined ? parseNumericValue(r[colGst], 0) : 0;
+    
+    let defaultAmt = 50;
+    if (typeVal === 'E' || isMbu === 'Yes') defaultAmt = 0;
+    else if (typeVal === 'B') defaultAmt = 100;
+    else defaultAmt = 50;
+
+    const parsedAmt = colAmt > -1 && r[colAmt] !== undefined && String(r[colAmt]).trim() !== ''
+      ? parseNumericValue(r[colAmt], defaultAmt)
+      : defaultAmt;
+
     const rowObj = {
       enrolmentNo: colEnrol > -1 && r[colEnrol] ? String(r[colEnrol]).trim() : `2345/00${loadedCount + 1}/${getTodayString()}`,
       type: typeVal,
-      mandatoryBiometricUpdate: colMbu > -1 && r[colMbu] ? (String(r[colMbu]).toUpperCase().includes('Y') ? 'Yes' : 'No') : 'No',
-      isNRI: colNri > -1 && r[colNri] ? (String(r[colNri]).toUpperCase().includes('Y') ? 'Yes' : 'No') : 'No',
+      mandatoryBiometricUpdate: isMbu,
+      isNRI: isNri,
       operatorId: colOp > -1 && r[colOp] ? String(r[colOp]).trim() : (document.getElementById('eodOperatorInput') ? document.getElementById('eodOperatorInput').value : ''),
       resident: colResident > -1 && r[colResident] ? String(r[colResident]).trim() : `Resident ${loadedCount + 1}`,
       status: colStatus > -1 && r[colStatus] ? String(r[colStatus]).toUpperCase().trim() : 'UPLOADED',
-      gstApplied: colGst > -1 && r[colGst] ? parseFloat(r[colGst]) || 0 : 0,
-      amount: colAmt > -1 && r[colAmt] ? parseFloat(r[colAmt]) || (typeVal === 'B' ? 100 : 50) : (typeVal === 'B' ? 100 : 50)
+      gstApplied: parsedGst,
+      amount: parsedAmt
     };
 
     addTransactionRow(rowObj);
@@ -578,7 +644,7 @@ function downloadBlankEODTemplate() {
   const headers = ["SNo", "Enrolment_No", "Type", "MBU", "NRI", "Operator_ID", "Resident_Name", "Status", "GST", "Amount"];
   const sampleRows = [
     ["1", `2345/76581/${getTodayString()}`, "U", "No", "No", "S_NX_TS_047", "K. Rajesh", "UPLOADED", "0", "50"],
-    ["2", `2345/76582/${getTodayString()}`, "E", "Yes", "No", "S_NX_TS_047", "S. Kavitha", "UPLOADED", "0", "50"],
+    ["2", `2345/76582/${getTodayString()}`, "E", "No", "No", "S_NX_TS_047", "S. Kavitha", "UPLOADED", "0", "0"],
     ["3", `2345/76583/${getTodayString()}`, "B", "No", "No", "S_NX_TS_047", "M. Venkat", "UPLOADED", "0", "100"]
   ];
 
@@ -609,7 +675,7 @@ function handleEODSubmit(event) {
     return;
   }
 
-  // Harvest Transactions Table
+  // Harvest Transactions Table with named query selectors
   const tbody = document.getElementById('eodTxTableBody');
   const trs = tbody.querySelectorAll('tr');
   const transactions = [];
@@ -619,11 +685,25 @@ function handleEODSubmit(event) {
   let totalAmount = 0;
 
   trs.forEach((tr, index) => {
-    const inputs = tr.querySelectorAll('input, select');
-    const type = inputs[1].value;
-    const gstVal = parseFloat(inputs[6].value) || 0;
-    const amtVal = parseFloat(inputs[7].value) || 0;
-    const rowTotal = parseFloat(inputs[8].value) || (gstVal + amtVal);
+    const enrolInput = tr.querySelector('input[name^="tx_enrolNo_"]');
+    const typeSelect = tr.querySelector('select[name^="tx_type_"]');
+    const mbuSelect = tr.querySelector('select[name^="tx_mbu_"]');
+    const nriSelect = tr.querySelector('select[name^="tx_nri_"]');
+    const opInput = tr.querySelector('input[name^="tx_opId_"]');
+    const residentInput = tr.querySelector('input[name^="tx_resident_"]');
+    const statusSelect = tr.querySelector('select[name^="tx_status_"]');
+    const gstInput = tr.querySelector('input[name^="tx_gst_"]');
+    const amtInput = tr.querySelector('input[name^="tx_amt_"]');
+    const totalInput = tr.querySelector('input[name^="tx_total_"]');
+
+    const type = typeSelect ? typeSelect.value : 'U';
+    const gstVal = gstInput ? parseNumericValue(gstInput.value, 0) : 0;
+    const amtVal = amtInput ? parseNumericValue(amtInput.value, 0) : 0;
+    const rowTotal = gstVal + amtVal;
+
+    if (totalInput) {
+      totalInput.value = rowTotal.toFixed(2);
+    }
 
     if (type === 'E') {
       enrolCount++;
@@ -634,13 +714,13 @@ function handleEODSubmit(event) {
 
     const rowData = {
       sno: index + 1,
-      enrolmentNo: inputs[0].value,
+      enrolmentNo: enrolInput ? enrolInput.value.trim() : `EID-${index + 1}`,
       type: type,
-      mandatoryBiometricUpdate: inputs[2].value,
-      isNRI: inputs[3].value,
-      operatorId: inputs[4].value,
-      resident: inputs[5].value,
-      status: inputs[6].value,
+      mandatoryBiometricUpdate: mbuSelect ? mbuSelect.value : 'No',
+      isNRI: nriSelect ? nriSelect.value : 'No',
+      operatorId: opInput ? opInput.value.trim() : operatorId,
+      resident: residentInput ? residentInput.value.trim() : `Resident ${index + 1}`,
+      status: statusSelect ? statusSelect.value : 'UPLOADED',
       gstApplied: gstVal,
       amount: amtVal,
       totalAmount: rowTotal
@@ -685,7 +765,7 @@ function handleEODSubmit(event) {
     syncEODSubmissionToSupabase(submission);
   }
 
-  alert(`EOD Report ${submission.submissionId} submitted successfully for ${user.center}! Total Amount: ₹${totalAmount.toFixed(2)}`);
+  alert(`EOD Report ${submission.submissionId} submitted successfully for ${user.center}! Total Volume: ${totalVolume} | Total Amount: ₹${totalAmount.toFixed(2)}`);
   showView('mgr-history');
 }
 
