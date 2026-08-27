@@ -73,8 +73,14 @@ function addTransactionRow(rowData = null) {
 
   const enrolNo = rowData ? (rowData.enrolmentNo || '') : '';
   const type = rowData ? (rowData.type || 'U') : 'U';
-  const mbu = rowData ? (rowData.mandatoryBiometricUpdate || 'No') : 'No';
-  const nri = rowData ? (rowData.isNRI || 'No') : 'No';
+  const rawMbu = rowData ? (rowData.mandatoryBiometricUpdate || 'No') : 'No';
+  const isMbuYes = String(rawMbu).trim().toLowerCase().startsWith('y');
+  const mbu = isMbuYes ? 'Yes' : 'No';
+
+  const rawNri = rowData ? (rowData.isNRI || 'No') : 'No';
+  const isNriYes = String(rawNri).trim().toLowerCase().startsWith('y');
+  const nri = isNriYes ? 'Yes' : 'No';
+
   const resident = rowData ? (rowData.resident || '') : '';
   const status = rowData ? (rowData.status || 'UPLOADED') : 'UPLOADED';
   
@@ -94,7 +100,7 @@ function addTransactionRow(rowData = null) {
     <td><b>${rowId}</b></td>
     <td><input type="text" class="form-control" name="tx_enrolNo_${rowId}" value="${escapeHtml(enrolNo)}" placeholder="Enrolment / Packet No" required style="min-width:180px;" /></td>
     <td>
-      <select class="form-control" name="tx_type_${rowId}" onchange="handleTxTypeChange(${rowId}, this.value)" style="min-width:130px;">
+      <select class="form-control" name="tx_type_${rowId}" onchange="handleTxTypeChange(${rowId}, this.value)" style="min-width:130px; font-weight:600;">
         <option value="U" ${type === 'U' ? 'selected' : ''}>Update (U)</option>
         <option value="E" ${type === 'E' ? 'selected' : ''}>New Enrolment (E)</option>
         <option value="B" ${type === 'B' ? 'selected' : ''}>Biometric (B)</option>
@@ -102,15 +108,15 @@ function addTransactionRow(rowData = null) {
       </select>
     </td>
     <td>
-      <select class="form-control" name="tx_mbu_${rowId}" onchange="handleMbuChange(${rowId}, this.value)" style="min-width:80px;">
-        <option value="No" ${mbu === 'No' ? 'selected' : ''}>No</option>
-        <option value="Yes" ${mbu === 'Yes' ? 'selected' : ''}>Yes</option>
+      <select class="form-control" name="tx_mbu_${rowId}" onchange="handleMbuChange(${rowId}, this.value)" style="min-width:85px; font-weight:600; padding:6px 8px;">
+        <option value="No" ${!isMbuYes ? 'selected' : ''}>No</option>
+        <option value="Yes" ${isMbuYes ? 'selected' : ''}>Yes</option>
       </select>
     </td>
     <td>
-      <select class="form-control" name="tx_nri_${rowId}" style="min-width:80px;">
-        <option value="No" ${nri === 'No' ? 'selected' : ''}>No</option>
-        <option value="Yes" ${nri === 'Yes' ? 'selected' : ''}>Yes</option>
+      <select class="form-control" name="tx_nri_${rowId}" style="min-width:85px; font-weight:600; padding:6px 8px;">
+        <option value="No" ${!isNriYes ? 'selected' : ''}>No</option>
+        <option value="Yes" ${isNriYes ? 'selected' : ''}>Yes</option>
       </select>
     </td>
     <td>
@@ -484,21 +490,36 @@ async function parseEODPdfReport(typedarray) {
       const afterEnrol = cleanLine.slice(enrolPos + enrolNo.length).trim();
 
       // Match sequence: [Type] [MBU] [NRI] [OperatorID]
-      const prefixMatch = afterEnrol.match(/^([UEDB])\s+(Yes|No)\s+(Yes|No)\s+([A-Za-z0-9_]+)/i);
-
       let typeVal = 'U';
       let isMbu = 'No';
       let isNri = 'No';
       let rowOpId = detectedOp;
       let restAfterPrefix = afterEnrol;
 
+      const prefixMatch = afterEnrol.match(/^([UEDB])\s+(Yes|No|Y|N)\s+(Yes|No|Y|N)\s+([A-Za-z0-9_]+)/i);
+
       if (prefixMatch) {
         typeVal = prefixMatch[1].toUpperCase();
-        isMbu = prefixMatch[2];
-        isNri = prefixMatch[3];
+        isMbu = prefixMatch[2].toLowerCase().startsWith('y') ? 'Yes' : 'No';
+        isNri = prefixMatch[3].toLowerCase().startsWith('y') ? 'Yes' : 'No';
         rowOpId = prefixMatch[4];
         if (!detectedOp) detectedOp = rowOpId;
         restAfterPrefix = afterEnrol.slice(prefixMatch[0].length).trim();
+      } else {
+        // Token scanning fallback
+        const tokens = afterEnrol.split(/\s+/);
+        if (tokens.length >= 4) {
+          if (['U', 'E', 'B', 'D'].includes(tokens[0].toUpperCase())) {
+            typeVal = tokens[0].toUpperCase();
+          }
+          if (tokens[1].toLowerCase().startsWith('y')) isMbu = 'Yes';
+          if (tokens[2].toLowerCase().startsWith('y')) isNri = 'Yes';
+          if (tokens[3].length > 3) {
+            rowOpId = tokens[3];
+            if (!detectedOp) detectedOp = rowOpId;
+            restAfterPrefix = tokens.slice(4).join(' ');
+          }
+        }
       }
 
       // Extract Resident Name and Status
