@@ -558,34 +558,70 @@ function processParsedSheetData(rows) {
     return;
   }
 
-  const headerRow = rows[0].map(h => String(h).toLowerCase().replace(/[^a-z0-9]/g, ''));
-  const dataRows = rows.slice(1);
+  // 1. Locate the actual header row (handles metadata rows at the top)
+  let headerRowIndex = 0;
+  for (let i = 0; i < Math.min(rows.length, 15); i++) {
+    const rowStr = rows[i].map(c => String(c || '').toLowerCase().replace(/[^a-z0-9]/g, '')).join(' ');
+    if (rowStr.includes('enrol') || rowStr.includes('resident') || rowStr.includes('operator') || rowStr.includes('packet')) {
+      if (rowStr.includes('type') || rowStr.includes('status') || rowStr.includes('amount') || rowStr.includes('sno')) {
+        headerRowIndex = i;
+        break;
+      }
+    }
+  }
 
-  // Identify column indices with smart multi-pattern detection
-  let colEnrol = headerRow.findIndex(h => h.includes('enrol') || h.includes('packet') || h.includes('eid') || h.includes('number') || h.includes('appid'));
-  let colType = headerRow.findIndex(h => h.includes('type') || h.includes('service'));
-  let colMbu = headerRow.findIndex(h => h.includes('mbu') || h.includes('biometric'));
-  let colNri = headerRow.findIndex(h => h.includes('nri'));
-  let colOp = headerRow.findIndex(h => h.includes('operator') || h.includes('opid') || h.includes('user'));
-  let colResident = headerRow.findIndex(h => h.includes('resident') || h.includes('name') || h.includes('citizen') || h.includes('applicant'));
-  let colStatus = headerRow.findIndex(h => h.includes('status') || h.includes('sync'));
-  let colGst = headerRow.findIndex(h => h.includes('gst') || h.includes('tax'));
-  let colAmt = headerRow.findIndex(h => (h.includes('amount') || h.includes('fee') || h.includes('charge') || h.includes('price')) && !h.includes('total'));
-  let colTotal = headerRow.findIndex(h => h.includes('totalamount') || (h.includes('total') && h.includes('amt')));
+  const rawHeader = rows[headerRowIndex];
+  const headerRow = rawHeader.map(h => String(h || '').toLowerCase().trim().replace(/[^a-z0-9]/g, ''));
+  const dataRows = rows.slice(headerRowIndex + 1);
 
-  if (colAmt === -1 && colTotal !== -1) colAmt = colTotal;
-  if (colEnrol === -1) colEnrol = 1;
-  if (colType === -1) colType = 2;
-  if (colResident === -1) colResident = 6;
+  // Smart Column Index Finders with exact 19-column pattern prioritization
+  function findCol(keywords) {
+    for (const kw of keywords) {
+      const idx = headerRow.findIndex(h => h.includes(kw));
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  }
+
+  const colSno = findCol(['sno', 'slno', 'serialno']);
+  const colEnrol = findCol(['enrolmentnoanddate', 'enrolmentno', 'enrolment', 'packetid', 'eid', 'packet', 'appid']);
+  const colAppt = findCol(['appointmentid', 'appointment']);
+  const colType = findCol(['type', 'packettype', 'servicetype', 'enrolmenttype']);
+  const colMbu = findCol(['mandatorybiometricupdate', 'mbu', 'biometricupdate']);
+  const colNri = findCol(['isnri', 'nri']);
+  const colTin = findCol(['tinnumber', 'tin']);
+  const colOp = findCol(['operatorid', 'operator', 'opid', 'userid']);
+  const colReviewer = findCol(['reviewerid', 'reviewer']);
+  const colIntroducer = findCol(['introducer']);
+  const colProof = findCol(['proof', 'documentproof', 'poi', 'poa']);
+  const colResident = findCol(['resident', 'residentname', 'citizen', 'applicant', 'name']);
+  const colStatus = findCol(['status', 'packetstatus', 'uploadstatus', 'syncstatus']);
+  const colIntroReview = findCol(['introducerreviewstatus']);
+  const colUserReview = findCol(['userreviewstatus']);
+  const colGst = findCol(['gstapplied', 'gst', 'tax']);
+  
+  // Specific Amount Columns in UIDAI Standard (Cols 17, 18, 19)
+  const colAmtNew = findCol(['amountchargedfornewenrolment', 'amountchargedfornew', 'newenrolmentamount', 'newamount']);
+  const colAmtUpdate = findCol(['amountchargedforupdateenrolment', 'amountchargedforupdate', 'updateenrolmentamount', 'updateamount']);
+  const colTotalAmt = findCol(['totalamountcharged', 'totalamount', 'totalcharged', 'totalfee']);
+  const colGenericAmt = findCol(['amount', 'fee', 'charge', 'price']);
 
   const tbody = document.getElementById('eodTxTableBody');
   tbody.innerHTML = "";
   transactionRowCount = 0;
 
   let loadedCount = 0;
+  let firstDetectedOp = '';
 
   dataRows.forEach(r => {
-    if (!r || r.length === 0 || !r.some(cell => String(cell).trim() !== '')) return;
+    if (!r || r.length === 0 || !r.some(cell => String(cell || '').trim() !== '')) return;
+
+    // Check if this is a footer summary/total row (e.g. "Total", "Grand Total")
+    const firstCell = String(r[0] || '').trim().toLowerCase();
+    const secondCell = String(r[1] || '').trim().toLowerCase();
+    if (firstCell.includes('total') || firstCell.includes('grand') || secondCell.includes('total') || secondCell.includes('grand')) {
+      return; // Skip footer summary row
+    }
 
     // Determine Type
     let typeVal = 'U';
@@ -605,33 +641,104 @@ function processParsedSheetData(rows) {
     const isMbu = colMbu > -1 && r[colMbu] ? (String(r[colMbu]).toUpperCase().includes('Y') ? 'Yes' : 'No') : 'No';
     const isNri = colNri > -1 && r[colNri] ? (String(r[colNri]).toUpperCase().includes('Y') ? 'Yes' : 'No') : 'No';
 
-    // Parse GST & Fee accurately
-    const parsedGst = colGst > -1 && r[colGst] !== undefined ? parseNumericValue(r[colGst], 0) : 0;
-    
-    let defaultAmt = 50;
-    if (typeVal === 'E' || isMbu === 'Yes') defaultAmt = 0;
-    else if (typeVal === 'B') defaultAmt = 100;
-    else defaultAmt = 50;
+    // Parse Operator ID
+    let rowOpId = '';
+    if (colOp > -1 && r[colOp] && String(r[colOp]).trim() !== '') {
+      rowOpId = String(r[colOp]).trim();
+      if (!firstDetectedOp) firstDetectedOp = rowOpId;
+    } else {
+      rowOpId = document.getElementById('eodOperatorInput') ? document.getElementById('eodOperatorInput').value : '';
+    }
 
-    const parsedAmt = colAmt > -1 && r[colAmt] !== undefined && String(r[colAmt]).trim() !== ''
-      ? parseNumericValue(r[colAmt], defaultAmt)
-      : defaultAmt;
+    // Parse Resident Name
+    let resName = '';
+    if (colResident > -1 && r[colResident] && String(r[colResident]).trim() !== '') {
+      resName = String(r[colResident]).trim();
+    } else {
+      resName = `Resident ${loadedCount + 1}`;
+    }
+
+    // Parse Status
+    let rowStatus = 'UPLOADED';
+    if (colStatus > -1 && r[colStatus] && String(r[colStatus]).trim() !== '') {
+      rowStatus = String(r[colStatus]).toUpperCase().trim();
+    }
+
+    // Parse GST
+    const parsedGst = colGst > -1 && r[colGst] !== undefined ? parseNumericValue(r[colGst], 0) : 0;
+
+    // Parse Amount accurately across Col 17, Col 18, Col 19 or Generic Amount
+    let finalAmount = null;
+    
+    // Check if Total Amount Charged (Col 19) is explicitly present
+    let explicitTotal = null;
+    if (colTotalAmt > -1 && r[colTotalAmt] !== undefined && String(r[colTotalAmt]).trim() !== '') {
+      explicitTotal = parseNumericValue(r[colTotalAmt], null);
+    }
+
+    // Check Update Amount (Col 18)
+    const updateFee = colAmtUpdate > -1 && r[colAmtUpdate] !== undefined && String(r[colAmtUpdate]).trim() !== ''
+      ? parseNumericValue(r[colAmtUpdate], null)
+      : null;
+
+    // Check New Enrolment Amount (Col 17)
+    const newFee = colAmtNew > -1 && r[colAmtNew] !== undefined && String(r[colAmtNew]).trim() !== ''
+      ? parseNumericValue(r[colAmtNew], null)
+      : null;
+
+    // Determine the exact service amount
+    if (typeVal === 'E') {
+      if (newFee !== null) finalAmount = newFee;
+      else if (explicitTotal !== null) finalAmount = explicitTotal;
+      else finalAmount = 0; // Standard UIDAI New Enrolment is FREE
+    } else {
+      // Updates (Demographic, Document, Biometric)
+      if (updateFee !== null && updateFee > 0) {
+        finalAmount = updateFee;
+      } else if (explicitTotal !== null && explicitTotal > 0) {
+        finalAmount = explicitTotal;
+      } else if (colGenericAmt > -1 && r[colGenericAmt] !== undefined && String(r[colGenericAmt]).trim() !== '') {
+        finalAmount = parseNumericValue(r[colGenericAmt], null);
+      }
+      
+      if (finalAmount === null) {
+        if (isMbu === 'Yes') finalAmount = 0;
+        else if (typeVal === 'B') finalAmount = 100;
+        else finalAmount = 50;
+      }
+    }
+
+    // Parse Enrolment Number & Date (Col 2)
+    let enrolNumber = '';
+    if (colEnrol > -1 && r[colEnrol] && String(r[colEnrol]).trim() !== '') {
+      enrolNumber = String(r[colEnrol]).trim();
+    } else {
+      enrolNumber = `2345/00${loadedCount + 1}/${getTodayString()}`;
+    }
 
     const rowObj = {
-      enrolmentNo: colEnrol > -1 && r[colEnrol] ? String(r[colEnrol]).trim() : `2345/00${loadedCount + 1}/${getTodayString()}`,
+      enrolmentNo: enrolNumber,
       type: typeVal,
       mandatoryBiometricUpdate: isMbu,
       isNRI: isNri,
-      operatorId: colOp > -1 && r[colOp] ? String(r[colOp]).trim() : (document.getElementById('eodOperatorInput') ? document.getElementById('eodOperatorInput').value : ''),
-      resident: colResident > -1 && r[colResident] ? String(r[colResident]).trim() : `Resident ${loadedCount + 1}`,
-      status: colStatus > -1 && r[colStatus] ? String(r[colStatus]).toUpperCase().trim() : 'UPLOADED',
+      operatorId: rowOpId,
+      resident: resName,
+      status: rowStatus,
       gstApplied: parsedGst,
-      amount: parsedAmt
+      amount: finalAmount
     };
 
     addTransactionRow(rowObj);
     loadedCount++;
   });
+
+  // Auto-set the main Operator ID in Section 1 if detected from file
+  if (firstDetectedOp) {
+    const mainOpEl = document.getElementById('eodOperatorInput');
+    if (mainOpEl && !mainOpEl.value) {
+      mainOpEl.value = firstDetectedOp;
+    }
+  }
 
   recalculateEODTotalsFromRows();
   alert(`Successfully parsed and loaded ${loadedCount} transaction records into the EOD portal format! Total amounts and summary counts have been calculated.`);
