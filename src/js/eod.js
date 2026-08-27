@@ -78,22 +78,12 @@ function addTransactionRow(rowData = null) {
   const resident = rowData ? (rowData.resident || '') : '';
   const status = rowData ? (rowData.status || 'UPLOADED') : 'UPLOADED';
   
-  // Exact numbers from file without any hardcoded 50s
+  // Strict parsing from file without any default 50s
   const gstNum = rowData && rowData.gstApplied !== undefined ? parseNumericValue(rowData.gstApplied, 0) : 0;
+  const amtNum = rowData && rowData.amount !== undefined ? parseNumericValue(rowData.amount, 0) : 0;
   
-  let defaultAmt = 63.56;
-  if (type === 'E' || mbu === 'Yes') defaultAmt = 0.0;
-  else if (type === 'B') defaultAmt = 105.93;
-  else defaultAmt = 63.56;
-
-  const amtNum = rowData && rowData.amount !== undefined ? parseNumericValue(rowData.amount, defaultAmt) : defaultAmt;
-  
-  let totalNum = 0;
-  if (rowData && rowData.totalAmount !== undefined && rowData.totalAmount !== null) {
-    totalNum = parseNumericValue(rowData.totalAmount, gstNum + amtNum);
-  } else {
-    totalNum = gstNum + amtNum;
-  }
+  // Formula: Amount Charged + GST Applied = Total Amount Charged
+  const totalNum = amtNum + gstNum;
 
   const gst = gstNum.toFixed(2);
   const amt = amtNum.toFixed(2);
@@ -460,10 +450,18 @@ async function parseEODPdfReport(typedarray) {
           if (cleanName.length > 2) resident = cleanName;
         }
 
-        let amt = "50";
-        if (type === 'E' || mbu === 'Yes') amt = "0";
-        else if (type === 'B') amt = "100";
-        else amt = "50";
+        let gst = "0.00";
+        let amt = "0.00";
+        if (type === 'E' || mbu === 'Yes') {
+          gst = "0.00";
+          amt = "0.00";
+        } else if (type === 'B') {
+          gst = "19.07";
+          amt = "105.93";
+        } else {
+          gst = "11.44";
+          amt = "63.56";
+        }
 
         parsedRows.push([
           String(rowCount),
@@ -474,7 +472,7 @@ async function parseEODPdfReport(typedarray) {
           opId,
           resident,
           "UPLOADED",
-          "0",
+          gst,
           amt
         ]);
       }
@@ -717,54 +715,23 @@ function processParsedSheetData(rows) {
       rowStatus = String(r[colStatus]).toUpperCase().trim();
     }
 
-    // Parse GST
+    // 1. Exact GST from Column 16 (GST Applied)
     const parsedGst = colGst > -1 && r[colGst] !== undefined ? parseNumericValue(r[colGst], 0) : 0;
 
-    // Parse Amount accurately across Col 17, Col 18, Col 19 or Generic Amount
-    let finalAmount = null;
-    
-    // Check if Total Amount Charged (Col 19) is explicitly present
-    let explicitTotal = null;
-    if (colTotalAmt > -1 && r[colTotalAmt] !== undefined && String(r[colTotalAmt]).trim() !== '') {
-      explicitTotal = parseNumericValue(r[colTotalAmt], null);
+    // 2. Exact Update Fee from Column 18 (Amount Charged For Update Enrolment)
+    const updateFee = colAmtUpdate > -1 && r[colAmtUpdate] !== undefined ? parseNumericValue(r[colAmtUpdate], 0) : 0;
+
+    // 3. Exact New Enrolment Fee from Column 17 (Amount Charged For New Enrolment)
+    const newFee = colAmtNew > -1 && r[colAmtNew] !== undefined ? parseNumericValue(r[colAmtNew], 0) : 0;
+
+    // 4. Exact Amount Charged
+    let finalAmount = (typeVal === 'E') ? newFee : updateFee;
+    if (finalAmount === 0 && colGenericAmt > -1 && r[colGenericAmt] !== undefined) {
+      finalAmount = parseNumericValue(r[colGenericAmt], 0);
     }
 
-    // Check Update Amount (Col 18)
-    const updateFee = colAmtUpdate > -1 && r[colAmtUpdate] !== undefined && String(r[colAmtUpdate]).trim() !== ''
-      ? parseNumericValue(r[colAmtUpdate], null)
-      : null;
-
-    // Check New Enrolment Amount (Col 17)
-    const newFee = colAmtNew > -1 && r[colAmtNew] !== undefined && String(r[colAmtNew]).trim() !== ''
-      ? parseNumericValue(r[colAmtNew], null)
-      : null;
-
-    // Determine the exact service amount
-    if (typeVal === 'E') {
-      if (newFee !== null) finalAmount = newFee;
-      else if (explicitTotal !== null) finalAmount = explicitTotal - parsedGst;
-      else finalAmount = 0; // Standard UIDAI New Enrolment is FREE
-    } else {
-      // Updates (Demographic, Document, Biometric)
-      if (updateFee !== null) {
-        finalAmount = updateFee;
-      } else if (explicitTotal !== null) {
-        finalAmount = explicitTotal - parsedGst;
-      } else if (colGenericAmt > -1 && r[colGenericAmt] !== undefined && String(r[colGenericAmt]).trim() !== '') {
-        finalAmount = parseNumericValue(r[colGenericAmt], 0);
-      } else {
-        if (isMbu === 'Yes') finalAmount = 0;
-        else if (typeVal === 'B') finalAmount = 105.93;
-        else finalAmount = 63.56;
-      }
-    }
-
-    let finalTotal = null;
-    if (explicitTotal !== null) {
-      finalTotal = explicitTotal;
-    } else {
-      finalTotal = parsedGst + finalAmount;
-    }
+    // 5. User Exact Formula: Amount Charged + GST Applied = Total Amount Charged
+    const finalTotal = finalAmount + parsedGst;
 
     // Parse Enrolment Number & Date (Col 2)
     let enrolNumber = '';

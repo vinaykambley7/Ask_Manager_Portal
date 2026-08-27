@@ -306,7 +306,16 @@ function renderAdminCenterReports() {
   tbody.innerHTML = FIXED_MANAGERS.map(m => {
     const stats = calculateCenterStats(m.center);
     const ops = getCenterOperators(m.center);
-    const estRevenue = (stats.totalEnrolments * 50) + (stats.totalUpdates * 50);
+    const centerSubs = getCenterSubmissions(m.center);
+    const estRevenue = centerSubs.reduce((acc, s) => {
+      let amt = 0;
+      if (s.summary && s.summary.totalAmount) {
+        amt = Number(s.summary.totalAmount);
+      } else if (s.transactions && s.transactions.length > 0) {
+        amt = s.transactions.reduce((tAcc, tx) => tAcc + Number(tx.totalAmount || 0), 0);
+      }
+      return acc + amt;
+    }, 0);
 
     return `
       <tr>
@@ -317,7 +326,7 @@ function renderAdminCenterReports() {
         <td>${stats.totalEnrolments}</td>
         <td>${stats.totalUpdates}</td>
         <td><b>${stats.totalVolume}</b></td>
-        <td><b>₹${estRevenue.toLocaleString()}</b></td>
+        <td><b>₹${estRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</b></td>
         <td><span class="badge ${stats.submittedToday ? 'badge-success' : 'badge-danger'}">${stats.submittedToday ? 'Submitted' : 'Pending'}</span></td>
       </tr>
     `;
