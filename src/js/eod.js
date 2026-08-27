@@ -78,15 +78,22 @@ function addTransactionRow(rowData = null) {
   const resident = rowData ? (rowData.resident || '') : '';
   const status = rowData ? (rowData.status || 'UPLOADED') : 'UPLOADED';
   
-  const gstNum = rowData ? parseNumericValue(rowData.gstApplied, 0) : 0;
+  // Exact numbers from file without any hardcoded 50s
+  const gstNum = rowData && rowData.gstApplied !== undefined ? parseNumericValue(rowData.gstApplied, 0) : 0;
   
-  let defaultAmt = 50;
-  if (type === 'E' || mbu === 'Yes') defaultAmt = 0;
-  else if (type === 'B') defaultAmt = 100;
-  else defaultAmt = 50;
+  let defaultAmt = 63.56;
+  if (type === 'E' || mbu === 'Yes') defaultAmt = 0.0;
+  else if (type === 'B') defaultAmt = 105.93;
+  else defaultAmt = 63.56;
 
   const amtNum = rowData && rowData.amount !== undefined ? parseNumericValue(rowData.amount, defaultAmt) : defaultAmt;
-  const totalNum = gstNum + amtNum;
+  
+  let totalNum = 0;
+  if (rowData && rowData.totalAmount !== undefined && rowData.totalAmount !== null) {
+    totalNum = parseNumericValue(rowData.totalAmount, gstNum + amtNum);
+  } else {
+    totalNum = gstNum + amtNum;
+  }
 
   const gst = gstNum.toFixed(2);
   const amt = amtNum.toFixed(2);
@@ -97,7 +104,7 @@ function addTransactionRow(rowData = null) {
   tr.id = `txRow_${rowId}`;
   tr.innerHTML = `
     <td><b>${rowId}</b></td>
-    <td><input type="text" class="form-control" name="tx_enrolNo_${rowId}" value="${escapeHtml(enrolNo)}" placeholder="Enrolment / Packet No" required style="min-width:140px;" /></td>
+    <td><input type="text" class="form-control" name="tx_enrolNo_${rowId}" value="${escapeHtml(enrolNo)}" placeholder="Enrolment / Packet No" required style="min-width:160px;" /></td>
     <td>
       <select class="form-control" name="tx_type_${rowId}" onchange="handleTxTypeChange(${rowId}, this.value)" style="min-width:120px;">
         <option value="U" ${type === 'U' ? 'selected' : ''}>Update (U)</option>
@@ -121,7 +128,7 @@ function addTransactionRow(rowData = null) {
     <td>
       <input type="text" class="form-control" name="tx_opId_${rowId}" id="txOpId_${rowId}" value="${escapeHtml(defaultOpId)}" placeholder="Operator ID" style="min-width:130px;" required />
     </td>
-    <td><input type="text" class="form-control" name="tx_resident_${rowId}" value="${escapeHtml(resident)}" placeholder="Resident Name" style="min-width:120px;" required /></td>
+    <td><input type="text" class="form-control" name="tx_resident_${rowId}" value="${escapeHtml(resident)}" placeholder="Resident Name" style="min-width:140px;" required /></td>
     <td>
       <select class="form-control" name="tx_status_${rowId}">
         <option value="UPLOADED" ${status === 'UPLOADED' ? 'selected' : ''}>UPLOADED</option>
@@ -145,23 +152,36 @@ function addTransactionRow(rowData = null) {
 }
 
 function handleTxTypeChange(rowId, type) {
+  const gstInput = document.getElementById(`txGst_${rowId}`);
   const amtInput = document.getElementById(`txAmt_${rowId}`);
+  const totalInput = document.getElementById(`txTotal_${rowId}`);
   if (!amtInput) return;
   
   if (type === 'E') {
+    if (gstInput) gstInput.value = "0.00";
     amtInput.value = "0.00";
+    if (totalInput) totalInput.value = "0.00";
   } else if (type === 'B') {
-    amtInput.value = "100.00";
+    if (gstInput) gstInput.value = "19.07";
+    amtInput.value = "105.93";
+    if (totalInput) totalInput.value = "125.00";
   } else {
-    amtInput.value = "50.00";
+    // Demographic (U) or Document (D)
+    if (gstInput) gstInput.value = "11.44";
+    amtInput.value = "63.56";
+    if (totalInput) totalInput.value = "75.00";
   }
   calculateRowTotal(rowId);
 }
 
 function handleMbuChange(rowId, mbuVal) {
+  const gstInput = document.getElementById(`txGst_${rowId}`);
   const amtInput = document.getElementById(`txAmt_${rowId}`);
-  if (mbuVal === 'Yes' && amtInput) {
-    amtInput.value = "0.00";
+  const totalInput = document.getElementById(`txTotal_${rowId}`);
+  if (mbuVal === 'Yes') {
+    if (gstInput) gstInput.value = "0.00";
+    if (amtInput) amtInput.value = "0.00";
+    if (totalInput) totalInput.value = "0.00";
   }
   calculateRowTotal(rowId);
 }
@@ -220,11 +240,7 @@ function recalculateEODTotalsFromRows() {
     const type = selectType ? selectType.value : 'U';
     const gst = gstInput ? parseNumericValue(gstInput.value, 0) : 0;
     const amt = amtInput ? parseNumericValue(amtInput.value, 0) : 0;
-    const rowTotal = gst + amt;
-
-    if (totalInput) {
-      totalInput.value = rowTotal.toFixed(2);
-    }
+    const rowTotal = totalInput ? parseNumericValue(totalInput.value, gst + amt) : (gst + amt);
 
     if (type === 'E') {
       enrolCount++;
@@ -510,10 +526,47 @@ function parseEODHtmlReport(htmlText) {
     if (el) el.value = opMatch[1].trim();
   }
 
-  const verMatch = fullText.match(/Client\s*Version\s*[:=-]\s*([0-9.]+)/i);
+  const verMatch = fullText.match(/Version\s*(?:No\.?\s*Of\s*Client|No|Client)?\s*[:=-]?\s*([0-9.]+)/i);
   if (verMatch && verMatch[1]) {
     const el = document.getElementById('eodClientVersion');
     if (el) el.value = verMatch[1].trim();
+  }
+
+  const lastRegMatch = fullText.match(/Last\s*Registered\s*[:=-]?\s*([0-9/:\s-]+)/i);
+  if (lastRegMatch && lastRegMatch[1]) {
+    const el = document.getElementById('eodLastRegistered');
+    if (el) {
+      try {
+        const parts = lastRegMatch[1].trim().split(/[\s/:]+/);
+        if (parts.length >= 5) {
+          // Format: DD/MM/YYYY HH:MM:SS -> YYYY-MM-DDTHH:MM
+          const d = parts[0].padStart(2, '0');
+          const m = parts[1].padStart(2, '0');
+          const y = parts[2];
+          const hr = parts[3].padStart(2, '0');
+          const min = parts[4].padStart(2, '0');
+          el.value = `${y}-${m}-${d}T${hr}:${min}`;
+        }
+      } catch (e) {}
+    }
+  }
+
+  const lastSynchMatch = fullText.match(/Last\s*Synch\s*[:=-]?\s*([0-9/:\s-]+)/i);
+  if (lastSynchMatch && lastSynchMatch[1]) {
+    const el = document.getElementById('eodLastSynch');
+    if (el) {
+      try {
+        const parts = lastSynchMatch[1].trim().split(/[\s/:]+/);
+        if (parts.length >= 5) {
+          const d = parts[0].padStart(2, '0');
+          const m = parts[1].padStart(2, '0');
+          const y = parts[2];
+          const hr = parts[3].padStart(2, '0');
+          const min = parts[4].padStart(2, '0');
+          el.value = `${y}-${m}-${d}T${hr}:${min}`;
+        }
+      } catch (e) {}
+    }
   }
 
   // 2. Locate Transaction Tables in HTML
@@ -689,23 +742,28 @@ function processParsedSheetData(rows) {
     // Determine the exact service amount
     if (typeVal === 'E') {
       if (newFee !== null) finalAmount = newFee;
-      else if (explicitTotal !== null) finalAmount = explicitTotal;
+      else if (explicitTotal !== null) finalAmount = explicitTotal - parsedGst;
       else finalAmount = 0; // Standard UIDAI New Enrolment is FREE
     } else {
       // Updates (Demographic, Document, Biometric)
-      if (updateFee !== null && updateFee > 0) {
+      if (updateFee !== null) {
         finalAmount = updateFee;
-      } else if (explicitTotal !== null && explicitTotal > 0) {
-        finalAmount = explicitTotal;
+      } else if (explicitTotal !== null) {
+        finalAmount = explicitTotal - parsedGst;
       } else if (colGenericAmt > -1 && r[colGenericAmt] !== undefined && String(r[colGenericAmt]).trim() !== '') {
-        finalAmount = parseNumericValue(r[colGenericAmt], null);
-      }
-      
-      if (finalAmount === null) {
+        finalAmount = parseNumericValue(r[colGenericAmt], 0);
+      } else {
         if (isMbu === 'Yes') finalAmount = 0;
-        else if (typeVal === 'B') finalAmount = 100;
-        else finalAmount = 50;
+        else if (typeVal === 'B') finalAmount = 105.93;
+        else finalAmount = 63.56;
       }
+    }
+
+    let finalTotal = null;
+    if (explicitTotal !== null) {
+      finalTotal = explicitTotal;
+    } else {
+      finalTotal = parsedGst + finalAmount;
     }
 
     // Parse Enrolment Number & Date (Col 2)
@@ -725,7 +783,8 @@ function processParsedSheetData(rows) {
       resident: resName,
       status: rowStatus,
       gstApplied: parsedGst,
-      amount: finalAmount
+      amount: finalAmount,
+      totalAmount: finalTotal
     };
 
     addTransactionRow(rowObj);
