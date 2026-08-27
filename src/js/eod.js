@@ -82,7 +82,11 @@ function addTransactionRow(rowData = null) {
   const nri = isNriYes ? 'Yes' : 'No';
 
   const resident = rowData ? (rowData.resident || '') : '';
-  const status = rowData ? (rowData.status || 'UPLOADED') : 'UPLOADED';
+  const rawStatus = rowData && rowData.status ? String(rowData.status).trim().toUpperCase() : 'UPLOADED';
+  let statusVal = 'UPLOADED';
+  if (rawStatus.includes('PEND')) statusVal = 'PENDING';
+  else if (rawStatus.includes('REJ')) statusVal = 'REJECTED';
+  else statusVal = 'UPLOADED';
   
   // Exact numbers without hardcoded defaults
   const gstNum = rowData && rowData.gstApplied !== undefined ? parseNumericValue(rowData.gstApplied, 0) : 0;
@@ -98,9 +102,9 @@ function addTransactionRow(rowData = null) {
   tr.id = `txRow_${rowId}`;
   tr.innerHTML = `
     <td><b>${rowId}</b></td>
-    <td><input type="text" class="form-control" name="tx_enrolNo_${rowId}" value="${escapeHtml(enrolNo)}" placeholder="Enrolment / Packet No" required style="min-width:180px;" /></td>
+    <td><input type="text" class="form-control" name="tx_enrolNo_${rowId}" value="${escapeHtml(enrolNo)}" placeholder="Enrolment / Packet No" required style="min-width:190px;" /></td>
     <td>
-      <select class="form-control" name="tx_type_${rowId}" onchange="handleTxTypeChange(${rowId}, this.value)" style="min-width:130px; font-weight:600;">
+      <select class="form-control" name="tx_type_${rowId}" onchange="handleTxTypeChange(${rowId}, this.value)" style="min-width:135px; font-weight:600; padding:6px 8px;">
         <option value="U" ${type === 'U' ? 'selected' : ''}>Update (U)</option>
         <option value="E" ${type === 'E' ? 'selected' : ''}>New Enrolment (E)</option>
         <option value="B" ${type === 'B' ? 'selected' : ''}>Biometric (B)</option>
@@ -108,31 +112,31 @@ function addTransactionRow(rowData = null) {
       </select>
     </td>
     <td>
-      <select class="form-control" name="tx_mbu_${rowId}" onchange="handleMbuChange(${rowId}, this.value)" style="min-width:85px; font-weight:600; padding:6px 8px;">
+      <select class="form-control" name="tx_mbu_${rowId}" onchange="handleMbuChange(${rowId}, this.value)" style="min-width:90px; font-weight:600; padding:6px 8px;">
         <option value="No" ${!isMbuYes ? 'selected' : ''}>No</option>
         <option value="Yes" ${isMbuYes ? 'selected' : ''}>Yes</option>
       </select>
     </td>
     <td>
-      <select class="form-control" name="tx_nri_${rowId}" style="min-width:85px; font-weight:600; padding:6px 8px;">
+      <select class="form-control" name="tx_nri_${rowId}" style="min-width:90px; font-weight:600; padding:6px 8px;">
         <option value="No" ${!isNriYes ? 'selected' : ''}>No</option>
         <option value="Yes" ${isNriYes ? 'selected' : ''}>Yes</option>
       </select>
     </td>
     <td>
-      <input type="text" class="form-control" name="tx_opId_${rowId}" id="txOpId_${rowId}" value="${escapeHtml(opId)}" placeholder="Operator ID" style="min-width:130px;" required />
+      <input type="text" class="form-control" name="tx_opId_${rowId}" id="txOpId_${rowId}" value="${escapeHtml(opId)}" placeholder="Operator ID" style="min-width:140px;" required />
     </td>
-    <td><input type="text" class="form-control" name="tx_resident_${rowId}" value="${escapeHtml(resident)}" placeholder="Resident Name" style="min-width:160px;" required /></td>
+    <td><input type="text" class="form-control" name="tx_resident_${rowId}" value="${escapeHtml(resident)}" placeholder="Resident Name" style="min-width:180px;" required /></td>
     <td>
-      <select class="form-control" name="tx_status_${rowId}" style="min-width:110px;">
-        <option value="UPLOADED" ${status === 'UPLOADED' ? 'selected' : ''}>UPLOADED</option>
-        <option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>PENDING</option>
-        <option value="REJECTED" ${status === 'REJECTED' ? 'selected' : ''}>REJECTED</option>
+      <select class="form-control" name="tx_status_${rowId}" style="min-width:130px; font-weight:600; padding:6px 8px;">
+        <option value="UPLOADED" ${statusVal === 'UPLOADED' ? 'selected' : ''}>UPLOADED</option>
+        <option value="PENDING" ${statusVal === 'PENDING' ? 'selected' : ''}>PENDING</option>
+        <option value="REJECTED" ${statusVal === 'REJECTED' ? 'selected' : ''}>REJECTED</option>
       </select>
     </td>
-    <td><input type="number" class="form-control" name="tx_gst_${rowId}" id="txGst_${rowId}" value="${gst}" step="0.01" oninput="calculateRowTotal(${rowId})" style="min-width:75px;" /></td>
-    <td><input type="number" class="form-control" name="tx_amt_${rowId}" id="txAmt_${rowId}" value="${amt}" step="0.01" oninput="calculateRowTotal(${rowId})" style="min-width:80px;" /></td>
-    <td><input type="number" class="form-control" name="tx_total_${rowId}" id="txTotal_${rowId}" value="${total}" readonly style="min-width:85px; font-weight:700; background:#f4f6f9;" /></td>
+    <td><input type="number" class="form-control" name="tx_gst_${rowId}" id="txGst_${rowId}" value="${gst}" step="0.01" oninput="calculateRowTotal(${rowId})" style="min-width:80px;" /></td>
+    <td><input type="number" class="form-control" name="tx_amt_${rowId}" id="txAmt_${rowId}" value="${amt}" step="0.01" oninput="calculateRowTotal(${rowId})" style="min-width:85px;" /></td>
+    <td><input type="number" class="form-control" name="tx_total_${rowId}" id="txTotal_${rowId}" value="${total}" readonly style="min-width:90px; font-weight:700; background:#f4f6f9;" /></td>
     <td>
       <button type="button" class="btn btn-danger btn-sm" onclick="removeTransactionRow(${rowId})">
         &times;
