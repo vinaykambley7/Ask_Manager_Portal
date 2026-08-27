@@ -3,9 +3,8 @@
  */
 
 const SUPABASE_CONFIG = {
-  // Replace with your Project URL & Anon Key from your Supabase Project Settings -> API
-  url: window.SUPABASE_URL || "https://your-project-id.supabase.co",
-  anonKey: window.SUPABASE_ANON_KEY || "your-anon-public-key"
+  url: window.SUPABASE_URL || "https://wgskquroadvtekvcnpao.supabase.co",
+  anonKey: window.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indnc2txdXJvYWR2dGVrdmNucGFvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzgyMzU0MiwiZXhwIjoyMTAzMzk5NTQyfQ.ruGDZn1rhl1gf6zEwr8MObYymAVuzLiCGsn0uEt6PLc"
 };
 
 let supabaseClient = null;
