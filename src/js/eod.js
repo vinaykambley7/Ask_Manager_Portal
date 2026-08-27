@@ -776,15 +776,15 @@ function processParsedSheetData(rows) {
       return; // Skip footer summary row
     }
 
-    // Determine Type
+    // Determine Type (U, E, B, D)
     let typeVal = 'U';
     if (colType > -1 && r[colType] !== undefined && r[colType] !== null) {
       const rawType = String(r[colType]).toUpperCase().trim();
-      if (rawType.startsWith('E') || rawType.includes('NEW') || rawType.includes('ENROL')) {
+      if (rawType === 'E' || rawType.startsWith('NEW') || rawType.includes('ENROL')) {
         typeVal = 'E';
-      } else if (rawType.startsWith('B') || rawType.includes('BIO')) {
+      } else if (rawType === 'B' || rawType.startsWith('BIO')) {
         typeVal = 'B';
-      } else if (rawType.startsWith('D') || rawType.includes('DOC')) {
+      } else if (rawType === 'D' || rawType.startsWith('DOC')) {
         typeVal = 'D';
       } else {
         typeVal = 'U';
@@ -800,13 +800,15 @@ function processParsedSheetData(rows) {
       rowOpId = String(r[colOp]).trim();
       if (!firstDetectedOp) firstDetectedOp = rowOpId;
     } else {
-      rowOpId = document.getElementById('eodOperatorInput') ? document.getElementById('eodOperatorInput').value : '';
+      rowOpId = document.getElementById('eodOperatorInput') ? document.getElementById('eodOperatorInput').value : 'S_NX_TS_047';
     }
 
-    // Parse Resident Name
+    // Parse Resident Name (stripping any proof code like "D " or "HF ")
     let resName = '';
     if (colResident > -1 && r[colResident] && String(r[colResident]).trim() !== '') {
-      resName = String(r[colResident]).trim();
+      const raw = String(r[colResident]).trim();
+      const cleaned = raw.replace(/^(?:D|HF|POA|POI|POR|DOB)\s+/i, '').trim();
+      resName = cleaned || raw;
     } else {
       resName = `Resident ${loadedCount + 1}`;
     }
