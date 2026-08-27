@@ -28,8 +28,8 @@ Confidential reference of system credentials and center assignments.
 * **Password**: `manager123`
 
 ### Manager 3: Shekar
-* **Center**: Gadwa
-* **Username**: `shekar` *(or `Gadwa`)*
+* **Center**: Gadwal
+* **Username**: `shekar` *(or `Gadwal`)*
 * **Password**: `manager123`
 
 ### Manager 4: Naithika

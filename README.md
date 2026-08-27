@@ -52,7 +52,7 @@ Then open **`http://localhost:3000`** in your browser.
 |---|---|---|---|
 | **Ramesh Kumar** | Anthosh Nagar | `ramesh` | `manager123` |
 | **Mounika** | A.S. Rao Nagar | `mounika` | `manager123` |
-| **Shekar** | Gadwa | `shekar` | `manager123` |
+| **Shekar** | Gadwal | `shekar` | `manager123` |
 | **Naithika** | Vanasthalipuram | `naithika` | `manager123` |
 | **Khadher** | Khamam | `khadher` | `manager123` |
 

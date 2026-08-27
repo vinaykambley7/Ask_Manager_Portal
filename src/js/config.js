@@ -4,7 +4,7 @@
 const FIXED_MANAGERS = [
   { id: 1, name: "Ramesh Kumar", center: "Anthosh Nagar", avatar: "RK" },
   { id: 2, name: "Mounika", center: "A.S. Rao Nagar", avatar: "MO" },
-  { id: 3, name: "Shekar", center: "Gadwa", avatar: "SH" },
+  { id: 3, name: "Shekar", center: "Gadwal", avatar: "SH" },
   { id: 4, name: "Naithika", center: "Vanasthalipuram", avatar: "NA" },
   { id: 5, name: "Khadher", center: "Khamam", avatar: "KH" }
 ];
