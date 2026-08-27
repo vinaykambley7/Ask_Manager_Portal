@@ -18,8 +18,8 @@ Confidential reference of system credentials and center assignments.
 *Login Tab: **"ASK Manager Login"***
 
 ### Manager 1: Ramesh Kumar
-* **Center**: Anthosh Nagar
-* **Username**: `ramesh` *(or `Anthosh Nagar`)*
+* **Center**: Santosh Nagar
+* **Username**: `ramesh` *(or `Santosh Nagar`)*
 * **Password**: `manager123`
 
 ### Manager 2: Mounika

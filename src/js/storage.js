@@ -27,6 +27,10 @@ function getCurrentUser() {
       user.center = 'Gadwal';
       setCurrentUser(user);
     }
+    if (user.center === 'Anthosh Nagar' || (user.name === 'Ramesh Kumar' && user.center !== 'Santosh Nagar')) {
+      user.center = 'Santosh Nagar';
+      setCurrentUser(user);
+    }
   }
   return user;
 }
@@ -41,6 +45,10 @@ function getOperators() {
   ops.forEach(o => {
     if (o.center === 'Gadwa' || (o.managerName === 'Shekar' && o.center !== 'Gadwal')) {
       o.center = 'Gadwal';
+      modified = true;
+    }
+    if (o.center === 'Anthosh Nagar' || (o.managerName === 'Ramesh Kumar' && o.center !== 'Santosh Nagar')) {
+      o.center = 'Santosh Nagar';
       modified = true;
     }
   });
@@ -58,7 +66,10 @@ function getCenterOperators(centerName) {
   const target = (centerName || '').trim().toLowerCase();
   return getOperators().filter(op => {
     const c = (op.center || '').trim().toLowerCase();
-    return c === target || (target.startsWith('gadwa') && c.startsWith('gadwa'));
+    return c === target || 
+           (target.startsWith('gadwa') && c.startsWith('gadwa')) ||
+           (target.includes('anthosh') && c.includes('santosh')) ||
+           (target.includes('santosh') && c.includes('anthosh'));
   });
 }
 
@@ -68,6 +79,10 @@ function getSubmissions() {
   subs.forEach(s => {
     if (s.center === 'Gadwa' || (s.managerName === 'Shekar' && s.center !== 'Gadwal')) {
       s.center = 'Gadwal';
+      modified = true;
+    }
+    if (s.center === 'Anthosh Nagar' || (s.managerName === 'Ramesh Kumar' && s.center !== 'Santosh Nagar')) {
+      s.center = 'Santosh Nagar';
       modified = true;
     }
   });
@@ -85,7 +100,10 @@ function getCenterSubmissions(centerName) {
   const target = (centerName || '').trim().toLowerCase();
   return getSubmissions().filter(s => {
     const c = (s.center || '').trim().toLowerCase();
-    return c === target || (target.startsWith('gadwa') && c.startsWith('gadwa'));
+    return c === target || 
+           (target.startsWith('gadwa') && c.startsWith('gadwa')) ||
+           (target.includes('anthosh') && c.includes('santosh')) ||
+           (target.includes('santosh') && c.includes('anthosh'));
   });
 }
 
@@ -200,31 +218,31 @@ function escapeHtml(text) {
 }
 
 function seedInitialDataIfEmpty() {
-  // Migrate any legacy Gadwa references in localStorage to Gadwal
+  // Migrate any legacy Gadwa/Anthosh references in localStorage to Gadwal/Santosh Nagar
   try {
     const rawUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    if (rawUser && rawUser.includes('Gadwa')) {
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, rawUser.replace(/Gadwa/g, 'Gadwal'));
+    if (rawUser && (rawUser.includes('Gadwa') || rawUser.includes('Anthosh'))) {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, rawUser.replace(/Gadwa/g, 'Gadwal').replace(/Anthosh/g, 'Santosh'));
     }
     const rawOps = localStorage.getItem(STORAGE_KEYS.OPERATORS);
-    if (rawOps && rawOps.includes('Gadwa')) {
-      localStorage.setItem(STORAGE_KEYS.OPERATORS, rawOps.replace(/Gadwa/g, 'Gadwal'));
+    if (rawOps && (rawOps.includes('Gadwa') || rawOps.includes('Anthosh'))) {
+      localStorage.setItem(STORAGE_KEYS.OPERATORS, rawOps.replace(/Gadwa/g, 'Gadwal').replace(/Anthosh/g, 'Santosh'));
     }
     const rawSubs = localStorage.getItem(STORAGE_KEYS.EOD_SUBMISSIONS);
-    if (rawSubs && rawSubs.includes('Gadwa')) {
-      localStorage.setItem(STORAGE_KEYS.EOD_SUBMISSIONS, rawSubs.replace(/Gadwa/g, 'Gadwal'));
+    if (rawSubs && (rawSubs.includes('Gadwa') || rawSubs.includes('Anthosh'))) {
+      localStorage.setItem(STORAGE_KEYS.EOD_SUBMISSIONS, rawSubs.replace(/Gadwa/g, 'Gadwal').replace(/Anthosh/g, 'Santosh'));
     }
     const rawWork = localStorage.getItem(STORAGE_KEYS.ASSIGNED_WORK);
-    if (rawWork && rawWork.includes('Gadwa')) {
-      localStorage.setItem(STORAGE_KEYS.ASSIGNED_WORK, rawWork.replace(/Gadwa/g, 'Gadwal'));
+    if (rawWork && (rawWork.includes('Gadwa') || rawWork.includes('Anthosh'))) {
+      localStorage.setItem(STORAGE_KEYS.ASSIGNED_WORK, rawWork.replace(/Gadwa/g, 'Gadwal').replace(/Anthosh/g, 'Santosh'));
     }
     const rawDone = localStorage.getItem(STORAGE_KEYS.WORK_DONE);
-    if (rawDone && rawDone.includes('Gadwa')) {
-      localStorage.setItem(STORAGE_KEYS.WORK_DONE, rawDone.replace(/Gadwa/g, 'Gadwal'));
+    if (rawDone && (rawDone.includes('Gadwa') || rawDone.includes('Anthosh'))) {
+      localStorage.setItem(STORAGE_KEYS.WORK_DONE, rawDone.replace(/Gadwa/g, 'Gadwal').replace(/Anthosh/g, 'Santosh'));
     }
   } catch (e) {}
 
-  const CLEAN_SCHEMA_VERSION = "v3_clean_gadwal";
+  const CLEAN_SCHEMA_VERSION = "v4_clean_santosh_gadwal";
   if (localStorage.getItem('ask_schema_ver') !== CLEAN_SCHEMA_VERSION) {
     localStorage.setItem('ask_schema_ver', CLEAN_SCHEMA_VERSION);
   }

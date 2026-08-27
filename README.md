@@ -50,7 +50,7 @@ Then open **`http://localhost:3000`** in your browser.
 
 | Manager Name | Center | Username | Password |
 |---|---|---|---|
-| **Ramesh Kumar** | Anthosh Nagar | `ramesh` | `manager123` |
+| **Ramesh Kumar** | Santosh Nagar | `ramesh` | `manager123` |
 | **Mounika** | A.S. Rao Nagar | `mounika` | `manager123` |
 | **Shekar** | Gadwal | `shekar` | `manager123` |
 | **Naithika** | Vanasthalipuram | `naithika` | `manager123` |
